@@ -19,6 +19,18 @@ app.get('/', (req, res) => {
 	res.render('index', { result: null });
 });
 
+// Add retry utility function
+const withRetry = async (fn, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+};
+
 app.post('/search', async (req, res) => {
 	try {
 		const query = req.body.query;
@@ -34,23 +46,26 @@ app.post('/search', async (req, res) => {
 		}, 30000); // 30 second timeout
 
 		try {
-			// Get search results
+			// Get search results with retry
 			const [searchResults, textResults] = await Promise.all([
-				new Promise((resolve, reject) => {
+				withRetry(() => new Promise((resolve, reject) => {
 					search.json({
 						q: query,
 						engine: 'google',
 						tbm: 'isch', // Include image results
 						num: 10 // Number of results
-					}, (result) => resolve(result), reject);
-				}),
-				new Promise((resolve, reject) => {
+					}, (result) => resolve(result), (error) => reject(error));
+				})),
+				withRetry(() => new Promise((resolve, reject) => {
 					search.json({
 						q: query,
 						engine: 'google'
-					}, (result) => resolve(result), reject);
-				})
-			]);
+					}, (result) => resolve(result), (error) => reject(error));
+				}))
+			]).catch(error => {
+				console.error('SerpAPI Error:', error);
+				throw new Error('Failed to fetch search results. Please try again.');
+			});
 
 			// Analyze with OpenAI
 			const gptResponse = await openai.chat.completions.create({
@@ -106,7 +121,7 @@ Please format the response in a clean, well-structured manner with clear section
 		console.error('Error:', error);
 		res.render('index', {
 			result: {
-				error: `Error processing request: ${error.message}`,
+				error: `Error: ${error.message}. Please try again later.`,
 				searchResults: [], // Add empty array for error case
 				images: []  // Add empty array for error case
 			}

@@ -40,7 +40,8 @@ body {
 .panels-container {
     display: flex;
     flex: 1;
-    padding-bottom: 80px; /* Space for search bar */
+    padding-bottom: 80px;
+    transition: all 0.5s ease-in-out;
 }
 
 .main-content {
@@ -54,8 +55,35 @@ body {
     flex: 1;
     height: calc(100vh - 80px);
     overflow-y: auto;
-    padding: 0;
-    background: var(--background-color);
+}
+
+.left-panel {
+    max-width: 800px;
+    margin: 0 auto;
+    transition: all 0.5s ease-in-out;
+}
+
+.right-panel {
+    transform: translateX(100%);
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.5s ease-in-out;
+}
+
+.search-active .left-panel {
+    max-width: 50%;
+    margin: 0;
+}
+
+.search-active .right-panel {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
 }
 
 .panel-header {
@@ -606,4 +634,25 @@ body.loading .thinking-indicator {
 
 .fade-out {
     animation: fadeOut 0.5s forwards;
+}
+
+.greeting-box {
+    text-align: center;
+    padding: 3rem;
+    background: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin: 2rem;
+}
+
+.greeting-box h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--accent-blue);
+}
+
+.greeting-box p {
+    color: var(--text-color);
+    line-height: 1.6;
+    margin-bottom: 2rem;
 }
