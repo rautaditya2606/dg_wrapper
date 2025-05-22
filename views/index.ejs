@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Analysis</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <main class="panels-container">
+            <!-- Left Panel - OpenAI Analysis -->
+            <div class="panel left-panel">
+                <div class="panel-header">AI Analysis</div>
+                <div class="panel-content">
+                    <% if(result && result.analysis) { %>
+                        <div class="analysis-box">
+                            <pre><%= result.analysis %></pre>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Right Panel - SerpAPI Results -->
+            <div class="panel right-panel">
+                <div class="panel-header">Search Results</div>
+                <div class="panel-content">
+                    <% if(result && result.images && result.images.length > 0) { %>
+                        <!-- Sequential Image Display -->
+                        <div id="sequential-images" class="sequential-container">
+                            <% result.images.forEach((image, index) => { %>
+                                <div class="image-slide" style="display: <%= index === 0 ? 'block' : 'none' %>">
+                                    <img src="<%= image.original || image.thumbnail %>" 
+                                         alt="<%= image.title %>">
+                                    <div class="image-counter">
+                                        <%= index + 1 %> / <%= result.images.length %>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+
+                        <!-- Full Results (Initially Hidden) -->
+                        <div id="full-results" class="full-results hidden">
+                            <!-- Images Section -->
+                            <% if(result.images && result.images.length > 0) { %>
+                                <div class="images-section">
+                                    <h2>Visual Results</h2>
+                                    <div class="image-grid">
+                                        <% result.images.forEach(image => { %>
+                                            <div class="image-item">
+                                                <img src="<%= image.thumbnail %>" alt="<%= image.title %>">
+                                            </div>
+                                        <% }) %>
+                                    </div>
+                                </div>
+                            <% } %>
+
+                            <!-- Text Results -->
+                            <div class="search-results">
+                                <h2>Web Results</h2>
+                                <% result.searchResults.forEach(item => { %>
+                                    <div class="search-item">
+                                        <h3><a href="<%= item.link %>" target="_blank"><%= item.title %></a></h3>
+                                        <p><%= item.snippet %></p>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </main>
+
+        <!-- Fixed Search Bar -->
+        <div class="search-container">
+            <form action="/search" method="POST">
+                <div class="input-group">
+                    <input type="text" name="query" placeholder="Enter your query..." required>
+                    <button type="submit">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <path fill="currentColor" d="M476 3.9c-6.3-3.1-13.6-1.8-18.3 3.2L26.8 236.2c-8.2 4.9-9.3 15.1-2.1 21.1L107 331.3 187 471c5.5 9.1 17.2 10.1 24.2 1.8l84.6-97.2 135.6 82.4c6.6 4 15.2 2.7 20.7-3.3 5.1-5.4 6.2-13.3 2.9-20L476 3.9zM117.9 277l-58.5-32.7 372.9-183.2-222.3 254zm275.3 150.2l-106.7-64.9L436 62.5l-42.8 366.7z"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function startImageSequence() {
+            const slides = document.querySelectorAll('.image-slide');
+            const totalSlides = slides.length;
+            let currentSlide = 0;
+
+            function showNextImage() {
+                slides[currentSlide].classList.add('fade-out');
+                
+                setTimeout(() => {
+                    slides[currentSlide].style.display = 'none';
+                    currentSlide = (currentSlide + 1) % totalSlides;
+                    
+                    if (currentSlide === 0) {
+                        // Show full results after all images
+                        document.getElementById('sequential-images').classList.add('fade-out');
+                        setTimeout(() => {
+                            document.getElementById('sequential-images').style.display = 'none';
+                            document.getElementById('full-results').classList.remove('hidden');
+                            document.getElementById('full-results').classList.add('fade-in');
+                        }, 500);
+                    } else {
+                        // Show next image
+                        slides[currentSlide].style.display = 'block';
+                        slides[currentSlide].classList.remove('fade-out');
+                        slides[currentSlide].classList.add('fade-in');
+                        setTimeout(showNextImage, 1500);
+                    }
+                }, 500);
+            }
+
+            setTimeout(showNextImage, 1500);
+        }
+
+        window.onload = startImageSequence;
+    </script>
+</body>
+</html>
