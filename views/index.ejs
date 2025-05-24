@@ -23,17 +23,180 @@
                         <div class="panel-header">AI Analysis</div>
                         <div class="panel-content">
                             <% if(result && result.analysis) { %>
-                                <div class="analysis-box">
-                                    <pre><%= result.analysis %></pre>
+                                <div class="node-container">
+                                    <!-- Summary Node -->
+                                    <div class="node" id="summary-node">
+                                        <div class="node-title">Summary Overview</div>
+                                        <div class="node-content">
+                                            <p><%= result.analysis.summary %></p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Key Points Node -->
+                                    <div class="node" id="keypoints-node">
+                                        <div class="node-title">Key Points</div>
+                                        <div class="node-content">
+                                            <ul class="node-list">
+                                                <% result.analysis.keyPoints.forEach(point => { %>
+                                                    <li><%= point %></li>
+                                                <% }); %>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <!-- Analysis Node -->
+                                    <div class="node" id="analysis-node">
+                                        <div class="node-title">Detailed Analysis</div>
+                                        <div class="node-content">
+                                            <p><strong>Content Quality:</strong> <%= result.analysis.analysis.contentQuality %></p>
+                                            <p><strong>Source Credibility:</strong> <%= result.analysis.analysis.credibility %></p>
+                                            <p><strong>Relevance:</strong> <%= result.analysis.analysis.relevance %></p>
+                                            <p><strong>Key Insights:</strong> <%= result.analysis.analysis.insights %></p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Context Node -->
+                                    <div class="node" id="context-node">
+                                        <div class="node-title">Additional Context</div>
+                                        <div class="node-content">
+                                            <p><strong>Background:</strong> <%= result.analysis.context.background %></p>
+                                            <strong>Related Topics:</strong>
+                                            <ul class="node-list">
+                                                <% result.analysis.context.relatedTopics.forEach(topic => { %>
+                                                    <li><%= topic %></li>
+                                                <% }); %>
+                                            </ul>
+                                            <strong>Common Misconceptions:</strong>
+                                            <ul class="node-list">
+                                                <% result.analysis.context.misconceptions.forEach(misconception => { %>
+                                                    <li><%= misconception %></li>
+                                                <% }); %>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recommendations Node -->
+                                    <div class="node" id="recommendations-node">
+                                        <div class="node-title">Recommendations</div>
+                                        <div class="node-content">
+                                            <strong>Further Research:</strong>
+                                            <ul class="node-list">
+                                                <% result.analysis.recommendations.research.forEach(area => { %>
+                                                    <li><%= area %></li>
+                                                <% }); %>
+                                            </ul>
+                                            <strong>Practical Applications:</strong>
+                                            <ul class="node-list">
+                                                <% result.analysis.recommendations.applications.forEach(app => { %>
+                                                    <li><%= app %></li>
+                                                <% }); %>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                <script>
+                                    document.addEventListener('DOMContentLoaded', () => {
+                                        const nodes = document.querySelectorAll('.node');
+                                        const typingSpeed = 15; // Milliseconds per character
+                                        const nodeStaggerTime = 800; // Milliseconds between each node's animation start
+
+                                        function typeCharacterByCharacter(textNode, textToType) {
+                                            // textNode is expected to be a DOM Text Node.
+                                            // We will modify its nodeValue.
+                                            const originalNodeValue = textNode.nodeValue; // Keep original for reference if needed, though textToType is passed
+                                            textNode.nodeValue = ''; // Clear current content for typing effect
+                                            
+                                            let i = 0;
+                                            return new Promise(resolve => {
+                                                function addChar() {
+                                                    if (i < textToType.length) {
+                                                        textNode.nodeValue += textToType.charAt(i);
+                                                        i++;
+                                                        setTimeout(addChar, typingSpeed);
+                                                    } else {
+                                                        resolve();
+                                                    }
+                                                }
+                                                addChar();
+                                            });
+                                        }
+
+                                        // Recursively collects all non-empty text nodes within a given element.
+                                        function collectTextNodes(currentElement, textNodesArray) {
+                                            Array.from(currentElement.childNodes).forEach(child => {
+                                                if (child.nodeType === Node.TEXT_NODE && child.textContent.trim().length > 0) {
+                                                    textNodesArray.push({ node: child, originalText: child.textContent });
+                                                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                                                    // Avoid recursing into script/style tags or other non-content elements
+                                                    if (!['SCRIPT', 'STYLE', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(child.tagName.toUpperCase())) {
+                                                        collectTextNodes(child, textNodesArray);
+                                                    }
+                                                }
+                                            });
+                                        }
+
+                                        async function animateNode(node, nodeIndex) {
+                                            node.classList.add('active'); // Make node visible (triggers CSS fade-in)
+                                            if (nodeIndex < nodes.length - 1) {
+                                                node.classList.add('connected'); // Triggers CSS for connector line
+                                            }
+                                            // Wait a brief moment for CSS transitions to start
+                                            await new Promise(resolve => setTimeout(resolve, 100)); 
+
+                                            const textItemsToAnimate = [];
+                                            const titleElement = node.querySelector('.node-title');
+                                            if (titleElement) {
+                                                collectTextNodes(titleElement, textItemsToAnimate);
+                                            }
+                                            const contentElement = node.querySelector('.node-content');
+                                            if (contentElement) {
+                                                collectTextNodes(contentElement, textItemsToAnimate);
+                                            }
+
+                                            // Animate each collected text node sequentially
+                                            for (const item of textItemsToAnimate) {
+                                                await typeCharacterByCharacter(item.node, item.originalText);
+                                            }
+                                        }
+
+                                        // Initialize animation for each node with a stagger
+                                        nodes.forEach((node, index) => {
+                                            setTimeout(async () => {
+                                                await animateNode(node, index);
+                                            }, index * nodeStaggerTime);
+                                        });
+                                    });
+                                </script>
                                 <% } %>
                         </div>
                         <% } %>
             </div>
 
             <!-- Right Panel -->
-            <% if(result) { %>
-                <div class="panel right-panel">
+            <div class="panel right-panel">
+                <!-- Terminal Window (Always present, toggled by CSS) -->
+                <div class="panel-header">Processing</div>
+                <div class="panel-content terminal-window">
+                    <div class="terminal-bar">
+                        <div class="terminal-buttons">
+                            <span class="terminal-button close"></span>
+                            <span class="terminal-button minimize"></span>
+                            <span class="terminal-button maximize"></span>
+                        </div>
+                    </div>
+                    <div class="terminal-content" id="terminal-content">
+                        <div class="terminal-line">$ Initializing search environment...</div>
+                        <div class="terminal-line">$ SerpAPI status: ready</div>
+                        <div class="terminal-line">$ OpenAI status: ready</div>
+                        <div class="terminal-line">$ System initialized and ready for queries</div>
+                        <div class="terminal-line status-line"></div>
+                        <div class="terminal-line blink">_</div>
+                    </div>
+                </div>
+
+                <!-- Search Results (Shown when results are ready) -->
+                <% if(result) { %>
                     <div class="panel-header">Search Results</div>
                     <div class="panel-content">
                         <% if(result && result.images && result.images.length> 0) { %>
@@ -51,38 +214,48 @@
 
                             <!-- Full Results (Initially Hidden) -->
                             <div id="full-results" class="full-results hidden">
-                                <!-- Images Section -->
-                                <% if(result.images && result.images.length> 0) { %>
-                                    <div class="images-section">
-                                        <h2>Visual Results</h2>
-                                        <div class="image-grid">
-                                            <% result.images.forEach(image=> { %>
-                                                <div class="image-item">
-                                                    <img src="<%= image.thumbnail %>" alt="<%= image.title %>">
-                                                </div>
-                                                <% }) %>
-                                        </div>
+                                <!-- Combined AI Analysis -->
+                                <div class="combined-analysis">
+                                    <h2>AI Analysis</h2>
+                                    <div class="analysis-content">
+                                        <% if(result.analysis) { %>
+                                            <div class="analysis-section">
+                                                <h3>Summary</h3>
+                                                <p><%= result.analysis.summary %></p>
+                                            </div>
+                                            <div class="analysis-section">
+                                                <h3>Key Insights</h3>
+                                                <ul>
+                                                    <% result.analysis.keyPoints.forEach(point => { %>
+                                                        <li><%= point %></li>
+                                                    <% }); %>
+                                                </ul>
+                                            </div>
+                                            <div class="analysis-section">
+                                                <h3>Detailed Analysis</h3>
+                                                <p><%= result.analysis.analysis.insights %></p>
+                                            </div>
+                                        <% } %>
                                     </div>
-                                    <% } %>
+                                </div>
 
-                                        <!-- Text Results -->
-                                        <div class="search-results">
-                                            <h2>Web Results</h2>
-                                            <% result.searchResults.forEach(item=> { %>
-                                                <div class="search-item">
-                                                    <h3><a href="<%= item.link %>" target="_blank">
-                                                            <%= item.title %>
-                                                        </a></h3>
-                                                    <p>
-                                                        <%= item.snippet %>
-                                                    </p>
-                                                </div>
-                                                <% }) %>
+                                <!-- Web Results -->
+                                <div class="search-results">
+                                    <h2>Web Results</h2>
+                                    <% result.searchResults.forEach(item=> { %>
+                                        <div class="search-item">
+                                            <h3><a href="<%= item.link %>" target="_blank">
+                                                    <%= item.title %>
+                                                </a></h3>
+                                            <p>
+                                                <%= item.snippet %>
+                                            </p>
                                         </div>
+                                    <% }) %>
+                                </div>
                             </div>
                             <% } %>
                     </div>
-                </div>
                 <% } %>
         </main>
 
@@ -90,7 +263,7 @@
         <div class="search-container">
             <form action="/search" method="POST">
                 <div class="input-group">
-                    <input type="text" name="query" placeholder="Enter your query..." required>
+                    <input style="background-color: #3a3b3d;" type="text" name="query" placeholder="Enter your query..." required>
                     <button type="submit">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
                             <path fill="currentColor"
@@ -138,10 +311,44 @@
 
         window.onload = startImageSequence;
 
-        // Add animation class when form is submitted
-        document.querySelector('form').addEventListener('submit', () => {
+        // Handle form submission and show terminal
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const terminal = document.getElementById('terminal-content');
+            const query = this.querySelector('input[name="query"]').value;
+            
+            // Add loading class to show terminal
+            document.body.classList.add('loading');
+            
+            // Clear previous terminal content
+            terminal.innerHTML = '';
+            
+            // Add terminal messages
+            addTerminalLine(`$ Processing query: "${query}"`);
+            addTerminalLine('$ Initiating search pipeline...');
+            
+            // Show stages with timing
+            setTimeout(() => addTerminalLine('$ [1/4] Connecting to SerpAPI...'), 500);
+            setTimeout(() => addTerminalLine('$ [2/4] Fetching search results and images...'), 1500);
+            setTimeout(() => addTerminalLine('$ [3/4] Processing data with OpenAI...'), 3000);
+            setTimeout(() => addTerminalLine('$ [4/4] Formatting response...'), 4000);
+            
+            // Add blinking cursor
+            setTimeout(() => addTerminalLine('_', true), 4100);
+            
+            // Submit the form
             document.body.classList.add('search-active');
+            this.submit();
         });
+
+        function addTerminalLine(text, isCursor = false) {
+            const terminal = document.getElementById('terminal-content');
+            const line = document.createElement('div');
+            line.className = 'terminal-line' + (isCursor ? ' blink' : '');
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
     </script>
 </body>
 

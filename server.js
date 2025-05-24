@@ -34,6 +34,12 @@ const withRetry = async (fn, retries = 3, delay = 1000) => {
 app.post('/search', async (req, res) => {
 	try {
 		const query = req.body.query;
+		// Add script to remove loading state
+		const removeLoadingScript = `
+			<script>
+				document.body.classList.remove('loading');
+			</script>
+		`;
 		const stages = {
 			serpapi: 'Fetching search results and images...',
 			openai: 'Analyzing search results...',
@@ -72,43 +78,49 @@ app.post('/search', async (req, res) => {
 				model: 'gpt-3.5-turbo',
 				messages: [{
 					role: 'user',
-					content: `Analyze these search results for "${query}" in detail and provide a comprehensive analysis with the following structure:
+					content: `Analyze these search results for "${query}" and provide a comprehensive analysis in this exact JSON format:
 
-1. Main Summary (2-3 sentences overview)
-
-2. Key Points:
-- List 3-5 most important takeaways
-- Highlight any significant patterns or trends
-
-3. Detailed Analysis:
-- Content Quality Assessment
-- Source Credibility Evaluation
-- Relevance to Query
-- Notable Findings or Insights
-
-4. Additional Context:
-- Historical or Background Information
-- Related Topics or Concepts
-- Common Misconceptions (if any)
-
-5. Recommendations:
-- Suggested Further Research Areas
-- Practical Applications or Implications
+{
+    "summary": "2-3 sentence overview",
+    "keyPoints": [
+        "point 1",
+        "point 2",
+        "point 3"
+    ],
+    "analysis": {
+        "contentQuality": "assessment of content quality",
+        "credibility": "evaluation of source credibility",
+        "relevance": "relevance to query",
+        "insights": "notable findings"
+    },
+    "context": {
+        "background": "historical or background info",
+        "relatedTopics": ["topic 1", "topic 2"],
+        "misconceptions": ["misconception 1", "misconception 2"]
+    },
+    "recommendations": {
+        "research": ["research area 1", "research area 2"],
+        "applications": ["application 1", "application 2"]
+    }
+}
 
 Search Results to Analyze:
 ${JSON.stringify(textResults.organic_results?.slice(0, 3), null, 2)}
 
-Please format the response in a clean, well-structured manner with clear section headings.`
+Ensure the response is valid JSON that exactly matches this structure.`
 				}],
 				max_tokens: 1000,
 				temperature: 0.7
 			});
 
 			clearTimeout(timeout);
+			// Parse the JSON response
+			const analysisData = JSON.parse(gptResponse.choices[0].message.content);
+			
 			res.render('index', {
 				result: {
 					query,
-					analysis: gptResponse.choices[0].message.content,
+					analysis: analysisData,
 					searchResults: textResults.organic_results?.slice(0, 3) || [],
 					images: searchResults.images_results?.slice(0, 4) || [],
 					stages: Object.values(stages) // Include processing stages in response
