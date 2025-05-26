@@ -173,6 +173,9 @@
                         <% } %>
             </div>
 
+            <!-- Toggle Button -->
+            <button class="toggle-panel">◀</button>
+
             <!-- Right Panel -->
             <div class="panel right-panel">
                 <!-- Terminal Window (Always present, toggled by CSS) -->
@@ -260,10 +263,10 @@
         </main>
 
         <!-- Search Bar -->
-        <div class="search-container">
+        <div class="search-form-container">
             <form action="/search" method="POST">
                 <div class="input-group">
-                    <input style="background-color: #3a3b3d;" type="text" name="query" placeholder="Enter your query..." required>
+                    <input type="text" name="query" placeholder="Enter your query..." required>
                     <button type="submit">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
                             <path fill="currentColor"
@@ -273,83 +276,85 @@
                 </div>
             </form>
         </div>
-    </div>
 
-    <script>
-        function startImageSequence() {
-            const slides = document.querySelectorAll('.image-slide');
-            const totalSlides = slides.length;
-            let currentSlide = 0;
+        <script>
+            function startImageSequence() {
+                const slides = document.querySelectorAll('.image-slide');
+                const totalSlides = slides.length;
+                let currentSlide = 0;
 
-            function showNextImage() {
-                slides[currentSlide].classList.add('fade-out');
+                function showNextImage() {
+                    slides[currentSlide].classList.add('fade-out');
 
-                setTimeout(() => {
-                    slides[currentSlide].style.display = 'none';
-                    currentSlide = (currentSlide + 1) % totalSlides;
+                    setTimeout(() => {
+                        slides[currentSlide].style.display = 'none';
+                        currentSlide = (currentSlide + 1) % totalSlides;
 
-                    if (currentSlide === 0) {
-                        // Show full results after all images
-                        document.getElementById('sequential-images').classList.add('fade-out');
-                        setTimeout(() => {
-                            document.getElementById('sequential-images').style.display = 'none';
-                            document.getElementById('full-results').classList.remove('hidden');
-                            document.getElementById('full-results').classList.add('fade-in');
-                        }, 500);
-                    } else {
-                        // Show next image
-                        slides[currentSlide].style.display = 'block';
-                        slides[currentSlide].classList.remove('fade-out');
-                        slides[currentSlide].classList.add('fade-in');
-                        setTimeout(showNextImage, 1500);
-                    }
-                }, 500);
+                        if (currentSlide === 0) {
+                            // Show full results after all images
+                            document.getElementById('sequential-images').classList.add('fade-out');
+                            setTimeout(() => {
+                                document.getElementById('sequential-images').style.display = 'none';
+                                document.getElementById('full-results').classList.remove('hidden');
+                                document.getElementById('full-results').classList.add('fade-in');
+                            }, 500);
+                        } else {
+                            // Show next image
+                            slides[currentSlide].style.display = 'block';
+                            slides[currentSlide].classList.remove('fade-out');
+                            slides[currentSlide].classList.add('fade-in');
+                            setTimeout(showNextImage, 1500);
+                        }
+                    }, 500);
+                }
+
+                setTimeout(showNextImage, 1500);
             }
 
-            setTimeout(showNextImage, 1500);
-        }
+            window.onload = startImageSequence;
 
-        window.onload = startImageSequence;
+            // Handle form submission and show terminal
+            document.querySelector('form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const terminal = document.getElementById('terminal-content');
+                const query = this.querySelector('input[name="query"]').value;
+                
+                // Add loading class to show terminal
+                document.body.classList.add('loading');
+                
+                // Clear previous terminal content
+                terminal.innerHTML = '';
+                
+                // Add terminal messages
+                addTerminalLine(`$ Processing query: "${query}"`);
+                addTerminalLine('$ Initiating search pipeline...');
+                
+                // Show stages with timing
+                setTimeout(() => addTerminalLine('$ [1/4] Connecting to SerpAPI...'), 500);
+                setTimeout(() => addTerminalLine('$ [2/4] Fetching search results and images...'), 1500);
+                setTimeout(() => addTerminalLine('$ [3/4] Processing data with OpenAI...'), 3000);
+                setTimeout(() => addTerminalLine('$ [4/4] Formatting response...'), 4000);
+                
+                // Add blinking cursor
+                setTimeout(() => addTerminalLine('_', true), 4100);
+                
+                // Submit the form
+                document.body.classList.add('search-active');
+                this.submit();
+            });
 
-        // Handle form submission and show terminal
-        document.querySelector('form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const terminal = document.getElementById('terminal-content');
-            const query = this.querySelector('input[name="query"]').value;
-            
-            // Add loading class to show terminal
-            document.body.classList.add('loading');
-            
-            // Clear previous terminal content
-            terminal.innerHTML = '';
-            
-            // Add terminal messages
-            addTerminalLine(`$ Processing query: "${query}"`);
-            addTerminalLine('$ Initiating search pipeline...');
-            
-            // Show stages with timing
-            setTimeout(() => addTerminalLine('$ [1/4] Connecting to SerpAPI...'), 500);
-            setTimeout(() => addTerminalLine('$ [2/4] Fetching search results and images...'), 1500);
-            setTimeout(() => addTerminalLine('$ [3/4] Processing data with OpenAI...'), 3000);
-            setTimeout(() => addTerminalLine('$ [4/4] Formatting response...'), 4000);
-            
-            // Add blinking cursor
-            setTimeout(() => addTerminalLine('_', true), 4100);
-            
-            // Submit the form
-            document.body.classList.add('search-active');
-            this.submit();
-        });
+            function addTerminalLine(text, isCursor = false) {
+                const terminal = document.getElementById('terminal-content');
+                const line = document.createElement('div');
+                line.className = 'terminal-line' + (isCursor ? ' blink' : '');
+                line.textContent = text;
+                terminal.appendChild(line);
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+        </script>
+    </div>
 
-        function addTerminalLine(text, isCursor = false) {
-            const terminal = document.getElementById('terminal-content');
-            const line = document.createElement('div');
-            line.className = 'terminal-line' + (isCursor ? ' blink' : '');
-            line.textContent = text;
-            terminal.appendChild(line);
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-    </script>
+    <script src="/js/panelToggle.js"></script>
 </body>
 
 </html>
