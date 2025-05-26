@@ -3,8 +3,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const rightPanel = document.querySelector('.right-panel');
     const leftPanel = document.querySelector('.left-panel');
     
-    // Initial state - center the left panel
-    rightPanel.classList.add('collapsed');
+    // Check if we're in search results mode (body has search-active class)
+    if (document.body.classList.contains('search-active')) {
+        // If we have search results, start with uncollapsed panel
+        rightPanel.classList.remove('collapsed');
+        toggleBtn.textContent = '▶';
+    } else {
+        // Initial state - center the left panel
+        rightPanel.classList.add('collapsed');
+        toggleBtn.textContent = '◀';
+    }
     
     toggleBtn.addEventListener('click', function() {
         // Toggle the collapsed state
