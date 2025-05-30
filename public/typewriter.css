@@ -1,0 +1,48 @@
+/* Typewriter effect styles */
+.typewriter-text {
+    position: relative;
+    color: var(--text-color);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.typewriter-text.visible {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.typewriter-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background-color: var(--text-color);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.7s step-start infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.typewriter-text.typing::after {
+    content: '|';
+    animation: blink 0.7s step-start infinite;
+}
+
+.typewriter-char {
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.1s ease, transform 0.1s ease;
+}
+
+.typewriter-char.visible {
+    opacity: 1;
+    transform: translateY(0);
+}

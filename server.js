@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get('/', (req, res) => {
-	res.render('index', { result: null });
+	res.render('index', { result: null, query: null });
 });
 
 // Add retry utility function
@@ -118,6 +118,7 @@ Ensure the response is valid JSON that exactly matches this structure.`
 			const analysisData = JSON.parse(gptResponse.choices[0].message.content);
 			
 			res.render('index', {
+				query: query,
 				result: {
 					query,
 					analysis: analysisData,
@@ -132,6 +133,7 @@ Ensure the response is valid JSON that exactly matches this structure.`
 	} catch (error) {
 		console.error('Error:', error);
 		res.render('index', {
+			query: query,
 			result: {
 				error: `Error: ${error.message}. Please try again later.`,
 				searchResults: [], // Add empty array for error case
