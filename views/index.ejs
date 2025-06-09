@@ -66,43 +66,57 @@
                                 </div>
 
                                 <!-- Context Node -->
-                                <div class="node" id="context-node">
-                                    <div class="node-title">Additional Context</div>
-                                    <div class="node-content">
-                                        <p><strong>Background:</strong> <%= result.analysis.context.background %></p>
-                                        <strong>Related Topics:</strong>
-                                        <ul class="node-list">
-                                            <% result.analysis.context.relatedTopics.forEach(topic => { %>
-                                                <li><%= topic %></li>
-                                            <% }); %>
-                                        </ul>
-                                        <strong>Common Misconceptions:</strong>
-                                        <ul class="node-list">
-                                            <% result.analysis.context.misconceptions.forEach(misconception => { %>
-                                                <li><%= misconception %></li>
-                                            <% }); %>
-                                        </ul>
+                                <% if(result.analysis.context) { %>
+                                    <div class="node" id="context-node">
+                                        <div class="node-title">Additional Context</div>
+                                        <div class="node-content">
+                                            <% if(result.analysis.context.background) { %>
+                                                <p><strong>Background:</strong> <%= result.analysis.context.background %></p>
+                                            <% } %>
+                                            <% if(result.analysis.context.relatedTopics && result.analysis.context.relatedTopics.length > 0) { %>
+                                                <strong>Related Topics:</strong>
+                                                <ul class="node-list">
+                                                    <% result.analysis.context.relatedTopics.forEach(topic => { %>
+                                                        <li><%= topic %></li>
+                                                    <% }); %>
+                                                </ul>
+                                            <% } %>
+                                            <% if(result.analysis.context.misconceptions && result.analysis.context.misconceptions.length > 0) { %>
+                                                <strong>Common Misconceptions:</strong>
+                                                <ul class="node-list">
+                                                    <% result.analysis.context.misconceptions.forEach(misconception => { %>
+                                                        <li><%= misconception %></li>
+                                                    <% }); %>
+                                                </ul>
+                                            <% } %>
+                                        </div>
                                     </div>
-                                </div>
+                                <% } %>
 
                                 <!-- Recommendations Node -->
-                                <div class="node" id="recommendations-node">
-                                    <div class="node-title">Recommendations</div>
-                                    <div class="node-content">
-                                        <strong>Further Research:</strong>
-                                        <ul class="node-list">
-                                            <% result.analysis.recommendations.research.forEach(area => { %>
-                                                <li><%= area %></li>
-                                            <% }); %>
-                                        </ul>
-                                        <strong>Practical Applications:</strong>
-                                        <ul class="node-list">
-                                            <% result.analysis.recommendations.applications.forEach(app => { %>
-                                                <li><%= app %></li>
-                                            <% }); %>
-                                        </ul>
+                                <% if(result.analysis.recommendations) { %>
+                                    <div class="node" id="recommendations-node">
+                                        <div class="node-title">Recommendations</div>
+                                        <div class="node-content">
+                                            <% if(result.analysis.recommendations.research && result.analysis.recommendations.research.length > 0) { %>
+                                                <strong>Further Research:</strong>
+                                                <ul class="node-list">
+                                                    <% result.analysis.recommendations.research.forEach(area => { %>
+                                                        <li><%= area %></li>
+                                                    <% }); %>
+                                                </ul>
+                                            <% } %>
+                                            <% if(result.analysis.recommendations.applications && result.analysis.recommendations.applications.length > 0) { %>
+                                                <strong>Practical Applications:</strong>
+                                                <ul class="node-list">
+                                                    <% result.analysis.recommendations.applications.forEach(app => { %>
+                                                        <li><%= app %></li>
+                                                    <% }); %>
+                                                </ul>
+                                            <% } %>
+                                        </div>
                                     </div>
-                                </div>
+                                <% } %>
                             </div>
 
                             <script>
@@ -216,7 +230,7 @@
                             <!-- Sequential Image Display -->
                             <div id="sequential-images" class="sequential-container">
                                 <% result.images.forEach((image, index)=> { %>
-                                    <div class="image-slide" style="display: <%= index === 0 ? 'block' : 'none' %>">
+                                    <div class="image-slide" style="<%= 'display: ' + (index === 0 ? 'block;' : 'none;') %>">
                                         <img src="<%= image.original || image.thumbnail %>" alt="<%= image.title %>">
                                         <div class="image-counter">
                                             <%= index + 1 %> / <%= result.images.length %>
