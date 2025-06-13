@@ -46,3 +46,15 @@
     opacity: 1;
     transform: translateY(0);
 }
+
+.typewriter {
+    display: inline-block;
+    position: relative;
+}
+
+/* Removed blinking cursor */
+
+.typing {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}

@@ -1,14 +1,26 @@
-require("dotenv").config();
-require('dns').setDefaultResultOrder('ipv4first');  // Prioritize IPv4
+import dotenv from 'dotenv';
+import dns from 'dns';
+import http from 'http';
+import https from 'https';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import express from 'express';
+import { GoogleSearch } from 'google-search-results-nodejs';
+import Anthropic from '@anthropic-ai/sdk';
+import rateLimit from 'express-rate-limit';
+import pino from 'pino';
+import HttpsProxyAgent from 'https-proxy-agent';
+import { chat, formatAIResponse } from './src/assistant.js';
+
+// Initialize dotenv
+dotenv.config();
+
+// Configure DNS and threadpool
+dns.setDefaultResultOrder('ipv4first');  // Prioritize IPv4
 process.env.UV_THREADPOOL_SIZE = 16;  // Increase thread pool for better network handling
 
 // Force IPv4 globally
-const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
-const http = require('http');
-const https = require('https');
-
-// Force IPv4 for all HTTP/HTTPS connections
 const forceIPv4 = (protocol) => {
   const agent = new protocol.Agent({
     family: 4,
@@ -27,13 +39,9 @@ https.globalAgent = forceIPv4(https);
 // Add environment variable to force IPv4
 process.env.NODE_OPTIONS = '--dns-result-order=ipv4first';
 
-const express = require("express");
-const path = require("path");
-const SerpApi = require("google-search-results-nodejs");
-const Anthropic = require('@anthropic-ai/sdk');
-const rateLimit = require('express-rate-limit');
-const pino = require('pino')();
-const HttpsProxyAgent = require('https-proxy-agent');
+// Create logger instance
+const logger = pino();
+const log = logger;  // Create an alias for consistency
 
 // Add API key validation logging
 console.log('API Key format check:', process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-'));
@@ -43,7 +51,7 @@ const app = express();
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY?.trim(),
 });
-const search = new SerpApi.GoogleSearch(process.env.SERPAPI_API_KEY);
+const search = new GoogleSearch(process.env.SERPAPI_API_KEY);
 search.options = {
   family: 4,
   lookup: ['v4'],
@@ -64,6 +72,10 @@ if (process.env.HTTPS_PROXY) {
     agent: proxyAgent
   };
 }
+
+// Set up __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
@@ -113,41 +125,51 @@ const withRetry = async (fn, retries = 5, backoff = (count) => Math.min(1000 * M
   }
 };
 
-// Handle SerpApi request with enhanced error handling and retry logic
-const handleSerpApiRequest = async (params) => {
-  const options = {
-    timeout: 10000,  // 10 second timeout per attempt
-    retries: 3,      // Maximum 3 retries
-    backoff: (retryCount) => Math.min(1000 * Math.pow(2, retryCount), 10000) // Exponential backoff
-  };
+// Import the search client
+import { SerpSearchClient } from './src/search.js';
 
-  return withRetry(
-    () =>
-      new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-          reject(new Error(`SerpAPI request timed out after ${options.timeout}ms`));
-        }, options.timeout);
+// Initialize the search client
+const searchClient = new SerpSearchClient(process.env.SERPAPI_API_KEY);
 
-        search.json(
-          params,
-          (result) => {
-            clearTimeout(timeoutId);
-            resolve(result);
-          },
-          (error) => {
-            clearTimeout(timeoutId);
-            pino.error({
-              error: error.message,
-              params,
-              code: error.code
-            }, 'SerpAPI request failed');
-            reject(error);
-          }
+// Fix timeout issue in handleSerpApiRequest
+// Update handleSerpApiRequest to use SerpSearchClient methods
+const handleSerpApiRequest = async (type, params) => {
+  try {
+    if (!params.q || typeof params.q !== 'string') {
+      throw new Error('Invalid query parameter: "q" must be a non-empty string');
+    }
+
+    logger.info({ type, query: params.q }, 'Starting search request');
+
+    const options = {
+      timeout: 30000,
+      retries: 3,
+      backoff: (retryCount) => Math.min(3000 * Math.pow(2, retryCount), 30000)
+    };
+
+    return await withRetry(
+      async () => {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Request timed out after ${options.timeout}ms`)), options.timeout)
         );
-      }),
-    options.retries,
-    (retryCount) => options.backoff(retryCount)
-  );
+
+        const searchPromise = type === 'images'
+          ? searchClient.searchImages(params)
+          : searchClient.searchLocal(params);
+
+        return await Promise.race([timeoutPromise, searchPromise]);
+      },
+      options.retries
+    );
+  } catch (error) {
+    logger.error({
+      error: error.message,
+      stack: error.stack,
+      type: 'handleSerpApiRequest_error',
+      query: params.q
+    }, 'Error in handleSerpApiRequest');
+    throw error;
+  }
 };
 
 const SUPPORTED_MODELS = ["claude-sonnet-4-20250514"];
@@ -283,6 +305,9 @@ function generateSystemPrompt(query, complexity) {
   return prompts[complexity.level];
 }
 
+// Initialize serpApi properly
+const serpApi = search; // Use the GoogleSearch instance initialized earlier
+
 // Replace the existing /search route with this updated version
 app.post("/search", async (req, res) => {
   const query = req.body.query;
@@ -293,7 +318,7 @@ app.post("/search", async (req, res) => {
     
     // Analyze query complexity
     const complexity = analyzeQueryComplexity(validatedQuery);
-    pino.info({ query: validatedQuery, complexity }, 'Query complexity analysis');
+    logger.info({ query: validatedQuery, complexity }, 'Query complexity analysis');
     
     // Perform search with timeout
     const [searchResults, textResults] = await performSearch(validatedQuery);
@@ -317,8 +342,18 @@ Ensure the response is valid JSON that exactly matches the specified structure.`
       }]
     });
 
-    // Parse response safely
-    const analysisData = await parseAnthropicResponse(anthropicResponse);
+    try {
+      const analysisData = await parseAnthropicResponse(anthropicResponse);
+      const templateData = createTemplateData(validatedQuery, analysisData, textResults, searchResults, complexity);
+    } catch (error) {
+      logger.error({
+        error: error.message,
+        stack: error.stack,
+        type: 'anthropic_error',
+        query: validatedQuery
+      }, 'Error in anthropic.messages.create');
+      throw error;
+    }
 
     // Create template data based on complexity level
     const templateData = createTemplateData(validatedQuery, analysisData, textResults, searchResults, complexity);
@@ -326,7 +361,7 @@ Ensure the response is valid JSON that exactly matches the specified structure.`
     try {
       res.render("index", templateData);
     } catch (renderError) {
-      pino.error({ 
+      logger.error({ 
         error: renderError.message,
         complexity: complexity.level,
         triggers: complexity.triggers
@@ -343,7 +378,7 @@ Ensure the response is valid JSON that exactly matches the specified structure.`
     }
     
   } catch (error) {
-    pino.error({ 
+    logger.error({ 
       error: error.message,
       stack: error.stack,
       query 
@@ -360,27 +395,294 @@ Ensure the response is valid JSON that exactly matches the specified structure.`
   }
 });
 
+// Helper function to check if query needs web search using Claude
+async function shouldDoWebSearch(query) {
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 50,
+    temperature: 0,
+    messages: [{
+      role: "user",
+      content: `Analyze this query: "${query}"
+
+Determine if this is a conversational message (like greetings, small talk, or casual chat) or if it's an information-seeking query that would benefit from web search results.
+
+Reply with only one word - either "conversational" or "search".
+Do not include any other text or explanation in your response.`
+    }]});
+
+    const decision = message.content[0].text.trim().toLowerCase();
+    return decision === 'search';
+}
+
+// Helper function to determine if web search is needed
+// This is now just a fallback in case Claude API fails
+function needsWebSearch(query) {
+  // Always do web search for queries that seem to request facts or information
+  const informationPatterns = [
+    /how\s+to/i,
+    /what\s+is/i,
+    /when\s+was/i,
+    /where\s+is/i,
+    /who\s+is/i,
+    /why\s+does/i,
+    /latest/i,
+    /news/i,
+    /update/i,
+    /example/i,
+    /guide/i,
+    /tutorial/i,
+    /search/i,
+    /find/i,
+    /restaurant/i,
+    /food/i,
+    /place/i
+  ];
+
+  return informationPatterns.some(pattern => pattern.test(query));
+}
+
 // New POST /analyze route
 app.post("/analyze", async (req, res) => {
+  const query = req.body.query;
+
   try {
-    const query = validateInput(req.body.query);
-    const complexity = analyzeQueryComplexity(query);
-    const serpResults = await handleSerpApiRequest({ q: query, api_key: process.env.SERPAPI_API_KEY });
+    if (!query) {
+      throw new Error("Query is required");
+    }
 
-    const contextPrompt = generateSystemPrompt(query, complexity);
-    const structuredAnswer = await callClaude(query, contextPrompt);
+    let doWebSearch = true;
+    try {
+      doWebSearch = await shouldDoWebSearch(query);
+    } catch (error) {
+      logger.warn('Claude API call failed, falling back to pattern matching', {
+        error: error.message,
+        stack: error.stack
+      });
+      doWebSearch = needsWebSearch(query);
+    }
 
-    res.json({
-      query,
-      complexity,
-      structuredAnswer
+    if (!doWebSearch) {
+      try {
+        const message = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          temperature: 0.7,
+          messages: [
+            { role: "user", content: query }
+          ]
+        });
+
+        return res.json({
+          query,
+          structuredAnswer: [{ type: "text", text: message.content[0]?.text || "No response" }],
+          isConversational: true,
+          hasWebResults: false
+        });
+      } catch (apiError) {
+        logger.error({
+          error: apiError.message,
+          stack: apiError.stack,
+          type: 'anthropic_api_error',
+          query
+        }, 'Error in Claude API call');
+        throw apiError;
+      }
+    }
+
+    let serpResults = { organic_results: [], image_results: [] };
+
+    try {
+      const baseParams = {
+        q: query,
+        engine: "google",
+        safe: "active",
+        num: 10,
+        google_domain: "google.co.in",
+        gl: "in",
+        hl: "en"
+      };
+
+      const [imageResults, webResults] = await Promise.all([
+        handleSerpApiRequest('images', { ...baseParams, tbm: "isch" }),
+        handleSerpApiRequest('web', { ...baseParams })
+      ]);
+
+      serpResults = {
+        organic_results: webResults.organic_results?.slice(0, 10) || [],
+        image_results: imageResults.images_results?.slice(0, 12) || []
+      };
+    } catch (searchError) {
+      logger.error({
+        error: searchError.message,
+        stack: searchError.stack,
+        type: 'search_error',
+        query
+      }, 'Web search failed');
+      throw searchError;
+    }
+
+    const prompt = `
+You are a helpful expert providing information about ${query}. Create a well-structured guide without repeating the query.
+
+Structure your response using these sections:
+
+## Key Resources
+- List the most relevant and high-quality resources
+- Group them by category (Free, Paid, Interactive, etc.)
+- Include specific recommendations with brief descriptions
+
+## Learning Paths
+- Suggest different approaches for learning
+- Outline progression paths from beginner to advanced
+- Recommend specific steps and milestones
+
+## Pro Tips
+- Share important tips and best practices
+- Point out common pitfalls to avoid
+- Include expert insights
+
+## Next Steps
+- Provide actionable next steps
+- Consider different skill levels
+- Suggest ways to practice and apply knowledge
+
+Keep each section concise and practical. Focus on providing value without repeating context.
+`.trim();
+
+    try {
+      const message = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        temperature: 0.7,
+        messages: [{ role: "user", content: prompt }]
+      });
+
+      const formattedResponse = formatAIResponse(message.content[0]?.text || "No response");
+
+      res.json({
+        query,
+        structuredAnswer: [{ type: "text", text: formattedResponse }],
+        serpResults,
+        isConversational: false,
+        hasWebResults: serpResults.organic_results.length > 0 || serpResults.image_results.length > 0
+      });
+    } catch (finalError) {
+      logger.error({
+        error: finalError.message,
+        stack: finalError.stack,
+        type: 'final_prompt_error',
+        query
+      }, 'Error in final prompt processing');
+      throw finalError;
+    }
+
+  } catch (error) {
+    logger.error('Error in /analyze:', {
+      error: error.message,
+      stack: error.stack,
+      query
     });
-  } catch (err) {
-    pino.error(err, 'Error in /analyze');
-    res.status(500).json({ error: err.message });
+    const isConversational = !needsWebSearch(query);
+    res.status(500).json({ 
+      error: error.message,
+      isConversational
+    });
   }
 });
 
+// Chat endpoint
+app.post('/chat', async (req, res) => {
+    try {
+        const query = req.body.query;
+        if (!query) {
+            return res.status(400).json({ error: 'Query is required' });
+        }
+
+        // Array to collect web activity
+        const webActivity = [];
+
+        // Create an event listener for web activities
+        const webActivityHandler = (activity) => {
+            webActivity.push(activity);
+            // Log each activity for debugging
+            logger.info({ activity }, 'Web activity received');
+        };
+
+        // Add the event listener before processing
+        process.on('webActivity', webActivityHandler);
+
+        // Process the chat query
+        const { response, webActivity: activities } = await chat(query);
+
+        // Remove the event listener
+        process.removeListener('webActivity', webActivityHandler);
+
+        // Send response with web activity
+        res.json({
+            response: response,
+            webActivity: [...webActivity, ...activities]
+        });
+
+    } catch (error) {
+        logger.error('Chat error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Route to render the test page
+app.get("/test", (req, res) => {
+  res.render("test", { 
+    results: [],
+    webResults: [],
+    imageResults: [],
+    error: null,
+    query: null
+  });
+});
+
+// Test search endpoint
+app.post("/test/search", async (req, res) => {
+  const query = req.body.query;
+  
+  try {
+    // Validate input
+    const validatedQuery = validateInput(query);
+    
+    // Let Claude decide if web search is needed
+    let doWebSearch = true;
+    try {
+      doWebSearch = await shouldDoWebSearch(query);
+    } catch (error) {
+      logger.warn('Claude API call failed, falling back to pattern matching', error);
+      doWebSearch = needsWebSearch(query);
+    }
+
+    if (!doWebSearch) {
+      return res.json({
+        message: "This appears to be a conversational query. Use /analyze for chat.",
+        isConversational: true
+      });
+    }
+
+    // Perform search with timeout
+    const [searchResults, textResults] = await performSearch(validatedQuery);
+
+    res.json({
+      query: validatedQuery,
+      webResults: textResults.organic_results || [],
+      imageResults: searchResults.images_results || [],
+      isConversational: false
+    });
+
+  } catch (error) {
+    logger.error('Test search error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      isConversational: false
+    });
+  }
+});
 
 // Helper function to create template data based on complexity
 function createTemplateData(query, analysisData, textResults, searchResults, complexity) {
@@ -449,7 +751,7 @@ const parseAnthropicResponse = async (response) => {
     }
     return analysisData;
   } catch (error) {
-    pino.error({ 
+    logger.error({ 
       error: error.message,
       rawResponse: response,
       parsedContent: response?.content
@@ -463,18 +765,32 @@ const performSearch = async (query) => {
     setTimeout(() => reject(new Error("Request timed out")), 30000)
   );
 
+  // Set up base parameters with proper engine specification
+  const baseParams = {
+    q: query,
+    engine: "google",
+    google_domain: "google.co.in",
+    gl: "in",
+    hl: "en",
+    safe: "active",
+    num: 10
+  };
+
+  // Extract location if present
+  const locationMatch = query.match(/\b(?:in|at|near)\s+([^,]+)(?:,\s*([^,]+))?(?:,\s*([^,]+))?\b/i);
+  if (locationMatch) {
+    // Location is already in the query, just add a flag
+    baseParams.location_requested = true;
+  }
+
+  // Create copies for both search types to avoid parameter conflicts
+  const imageBaseParams = { ...baseParams };
+  const webBaseParams = { ...baseParams };
+  
   return Promise.race([
     Promise.all([
-      handleSerpApiRequest({
-        q: query,
-        engine: "google",
-        tbm: "isch",
-        num: 10,
-      }),
-      handleSerpApiRequest({
-        q: query,
-        engine: "google",
-      })
+      handleSerpApiRequest('images', imageBaseParams),  // Image search parameters
+      handleSerpApiRequest('web', webBaseParams)  // Web search parameters
     ]),
     timeoutPromise
   ]);
@@ -497,14 +813,6 @@ async function callClaude(query, contextPrompt) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
-  
-  // Verify IPv4 configuration
-  dns.lookup('serpapi.com', { family: 4 }, (err, address, family) => {
-    if (err) {
-      pino.error({ error: err }, 'Failed to resolve serpapi.com');
-    } else {
-      pino.info({ address, family }, 'Successfully resolved serpapi.com using IPv4');
-    }
-  });
+    logger.info(`Server is running on port ${PORT}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });

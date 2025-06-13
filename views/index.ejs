@@ -7,6 +7,7 @@
     <title>Search Analysis</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/typewriter.css">
+    <script src="/js/results-tabs.js" defer></script>
 </head>
 
 <body class="<%= result ? 'search-active' : '' %>">
@@ -202,9 +203,8 @@
 
             <!-- Right Panel -->
             <div class="panel right-panel">
-                <!-- Terminal Window (Always present, toggled by CSS) -->
-                <!-- <div class="panel-header">Processing</div> -->
-                <div class="panel-content terminal-window">
+                <!-- Terminal Window -->
+                <div class="terminal-window">
                     <div class="terminal-bar">
                         <div class="terminal-buttons">
                             <span class="terminal-button close"></span>
@@ -215,75 +215,48 @@
                     <div class="terminal-content" id="terminal-content">
                         <div class="terminal-line">$ Initializing search environment...</div>
                         <div class="terminal-line">$ SerpAPI status: ready</div>
-                        <div class="terminal-line">$ OpenAI status: ready</div>
                         <div class="terminal-line">$ System initialized and ready for queries</div>
                         <div class="terminal-line status-line"></div>
                         <div class="terminal-line blink">_</div>
                     </div>
                 </div>
 
-                <!-- Search Results (Shown when results are ready) -->
-                <% if(result) { %>
-                    <!-- <div class="panel-header">Search Results</div> -->
-                    <div class="panel-content">
-                        <% if(result && result.images && result.images.length> 0) { %>
-                            <!-- Sequential Image Display -->
-                            <div id="sequential-images" class="sequential-container">
-                                <% result.images.forEach((image, index)=> { %>
-                                    <div class="image-slide" style="<%= 'display: ' + (index === 0 ? 'block;' : 'none;') %>">
-                                        <img src="<%= image.original || image.thumbnail %>" alt="<%= image.title %>">
-                                        <div class="image-counter">
-                                            <%= index + 1 %> / <%= result.images.length %>
-                                        </div>
-                                    </div>
-                                    <% }) %>
+                <!-- Search Results with Tabs -->
+                <% if(result && result.searchResults) { %>
+                    <div class="results-tabs">
+                        <button class="tab active" data-tab="web">Web Results</button>
+                        <button class="tab" data-tab="images">Images</button>
+                    </div>
+                    
+                    <!-- Web Results -->
+                    <div class="web-results" id="web-results">
+                        <% result.searchResults.forEach(result => { %>
+                            <div class="search-result">
+                                <h3 class="result-title">
+                                    <a href="<%= result.link %>" target="_blank" rel="noopener noreferrer">
+                                        <%= result.title %>
+                                    </a>
+                                </h3>
+                                <p class="result-snippet"><%= result.snippet %></p>
+                                <div class="result-url"><%= result.displayed_link || result.link %></div>
                             </div>
-
-                            <!-- Full Results (Initially Hidden) -->
-                            <div id="full-results" class="full-results hidden">
-                                <!-- Combined AI Analysis -->
-                                <div class="combined-analysis">
-                                    <h2 style="margin-left: 10px;">AI Analysis</h2>
-                                    <div class="analysis-content">
-                                        <% if(result.analysis) { %>
-                                            <div class="analysis-section">
-                                                <h3>Summary</h3>
-                                                <p><%= result.analysis.summary %></p>
-                                            </div>
-                                            <div class="analysis-section">
-                                                <h3>Key Insights</h3>
-                                                <ul>
-                                                    <% result.analysis.keyPoints.forEach(point => { %>
-                                                        <li><%= point %></li>
-                                                    <% }); %>
-                                                </ul>
-                                            </div>
-                                            <div class="analysis-section">
-                                                <h3>Detailed Analysis</h3>
-                                                <p><%= result.analysis.analysis.insights %></p>
-                                            </div>
-                                        <% } %>
-                                    </div>
+                        <% }); %>
+                    </div>
+                    
+                    <!-- Image Results -->
+                    <div class="image-results" id="image-results" style="display: none;">
+                        <% if(result.images && result.images.length > 0) { %>
+                            <% result.images.forEach(image => { %>
+                                <div class="image-result">
+                                    <a href="<%= image.link %>" target="_blank" rel="noopener noreferrer">
+                                        <img src="<%= image.thumbnail %>" alt="<%= image.title %>" loading="lazy">
+                                    </a>
                                 </div>
-
-                                <!-- Web Results -->
-                                <div class="search-results">
-                                    <h2>Web Results</h2>
-                                    <% result.searchResults.forEach(item=> { %>
-                                        <div class="search-item">
-                                            <h3><a href="<%= item.link %>" target="_blank">
-                                                    <%= item.title %>
-                                                </a></h3>
-                                            <p>
-                                                <%= item.snippet %>
-                                            </p>
-                                        </div>
-                                    <% }) %>
-                                </div>
-                            </div>
-                            <% } %>
+                            <% }); %>
+                        <% } %>
                     </div>
                 <% } %>
+            </div>
         </main>
 
         <!-- Search Bar -->
