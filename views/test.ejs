@@ -6,6 +6,7 @@
     <title>AI Assistant Chat</title>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/typewriter.css" />
+    <link rel="stylesheet" href="/css/loader.css" />
     <script src="/js/results-tabs.js" defer></script>
     <style>
       :root {
@@ -369,6 +370,7 @@
           <h2>Chat Assistant</h2>
         </div>
         <div class="messages-container">
+          <div id="loadingMessage" class="loading-message"></div>
           <% if (results && results.length > 0) { %>
             <% results.forEach((result) => { %>
               <div class="message <%= result.role %>"><%= result.content %></div>
@@ -459,8 +461,21 @@
           userMessage.textContent = query;
           messagesContainer.appendChild(userMessage);
 
+          // Create and insert loading message right after user message
+          const loadingMessage = document.createElement("div");
+          loadingMessage.className = "loading-message";
+          userMessage.insertAdjacentElement('afterend', loadingMessage);
+
           // Clear input
           queryInput.value = "";
+
+          // Show loading message based on query type
+          loadingMessage.style.display = "block";
+          
+          // Check if query suggests web search
+          const webSearchKeywords = ["search", "find", "look up", "google", "what is", "how to", "show me"];
+          const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
+          loadingMessage.textContent = isWebSearch ? "Searching on web..." : "Answering...";
 
           try {
             const response = await fetch("/analyze", {
@@ -472,6 +487,9 @@
             });
 
             const data = await response.json();
+            
+            // Remove loading message from DOM
+            loadingMessage.remove();
 
             // Handle web panel visibility based on response type
             if (data.isConversational) {
