@@ -383,6 +383,74 @@ export function formatAIResponse(response) {
     }
 }
 
+// Helper function to classify queries using LLM
+async function classifyQuery(query) {
+    try {
+        const classificationPrompt = `Analyze this query: "${query}"
+
+Determine if this query requires a web search based on these criteria:
+
+1. Information Type:
+   - Static/General Knowledge: Basic concepts, definitions, established facts, general principles
+   - Dynamic/Current Information: News, recent developments, real-time data, current statistics
+
+2. Information Freshness:
+   - Timeless: Information that doesn't change significantly over time
+   - Time-Sensitive: Information that needs to be current or recent
+
+3. Information Scope:
+   - Universal: Information that is generally accepted and consistent across sources
+   - Specific: Information that might vary by source, location, or context
+
+4. Information Verification:
+   - Self-contained: Can be answered with general knowledge
+   - External Reference: Requires looking up specific facts, sources, or current data
+
+Examples:
+- "What is machine learning?" -> static (basic concept, timeless knowledge)
+- "What are the latest developments in machine learning?" -> search (current information needed)
+- "How does a neural network work?" -> static (established technical concept)
+- "What are the current applications of neural networks?" -> search (current usage examples needed)
+
+Based on the above analysis, determine if this query requires a web search.
+Reply with only one word - either "search" or "static".
+Do not include any other text or explanation in your response.`;
+
+        const response = await model.invoke(classificationPrompt);
+        const decision = response.trim().toLowerCase();
+        return decision === 'search';
+    } catch (error) {
+        console.error('Query classification error:', error);
+        // Fallback to pattern matching if LLM classification fails
+        return needsWebSearch(query);
+    }
+}
+
+// Helper function to determine if web search is needed (fallback)
+function needsWebSearch(query) {
+    const informationPatterns = [
+        /how\s+to/i,
+        /what\s+is/i,
+        /when\s+was/i,
+        /where\s+is/i,
+        /who\s+is/i,
+        /why\s+does/i,
+        /latest/i,
+        /news/i,
+        /update/i,
+        /example/i,
+        /guide/i,
+        /tutorial/i,
+        /search/i,
+        /find/i,
+        /restaurant/i,
+        /food/i,
+        /place/i
+    ];
+
+    return informationPatterns.some(pattern => pattern.test(query));
+}
+
 // Main chat function that processes user input
 export async function chat(input) {
     return new Promise(async (resolve) => {
@@ -402,6 +470,21 @@ export async function chat(input) {
 
             console.log('\n=== Processing Query ===');
             console.log(`Query: ${input}`);
+
+            // Classify query using LLM
+            const needsWeb = await classifyQuery(input);
+            
+            // If query doesn't need web search, use static model
+            if (!needsWeb) {
+                const staticResponse = await model.invoke(input);
+                webActivityEmitter.off('activity', activityHandler);
+                
+                resolve({
+                    response: formatAIResponse(staticResponse.trim()),
+                    webActivity: webActivities
+                });
+                return;
+            }
 
             // Check for year references and validate them
             const yearMatch = input.match(/\b(20\d{2})\b/);

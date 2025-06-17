@@ -262,42 +262,12 @@
             </div>
         </main>
 
-        <!-- Search Bar -->
-        <div class="search-form-container">
-            <form action="/search" method="POST" id="searchForm">
-                <div class="input-group">
-                    <input type="text" name="query" id="searchInput" 
-                           placeholder="Enter your search query..." 
-                           autocomplete="off"
-                           required>
-                    <button type="submit">Search</button>
-                </div>
-            </form>
-
-            <script>
-            document.getElementById('searchForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const query = document.getElementById('searchInput').value;
-                
-                // Immediately update query display
-                document.querySelector('.greeting-box p').textContent = query;
-                
-                // Submit via AJAX
-                try {
-                    const response = await fetch('/search', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({query})
-                    });
-                    
-                    const result = await response.json();
-                    // Handle server response here
-                } catch (error) {
-                    console.error('Search failed:', error);
-                }
-            });
-            </script>
-        </div>
+        <form id="chatForm" class="chat-form">
+            <div class="input-group">
+                <input type="text" id="queryInput" placeholder="Type your message..." required>
+                <button type="submit">Send</button>
+            </div>
+        </form>
 
         <script>
             function startImageSequence() {
