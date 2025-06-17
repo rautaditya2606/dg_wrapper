@@ -51,6 +51,15 @@ body {
     padding-bottom: 80px;
     width: 100%;
     position: relative;
+    background-color: var(--background-color);
+    justify-content: center;
+}
+
+.chat-container {
+    width: 60%;
+    margin: 0 auto;
+    max-width: 1200px;
+    background-color: var(--background-color);
 }
 
 .left-panel {
@@ -61,7 +70,7 @@ body {
     flex-direction: column;
     padding: 1.5rem;
     gap: 1.5rem;
-    width: 40%;
+    width: 100%;
     transform: translateX(0);
 }
 
@@ -86,15 +95,15 @@ body {
     width: calc(40% - 20px); /* Adjust width to account for right margin */
 }
 
-.right-panel:not(.collapsed) ~ .left-panel {
+.right-panel:not(.collapsed) ~ .chat-container .left-panel {
     transform: none;
-    width: 40%;
+    width: 100%;
     left: 0;
 }
 
-.right-panel.collapsed ~ .left-panel {
+.right-panel.collapsed ~ .chat-container .left-panel {
     transform: none;
-    width: 40%;
+    width: 100%;
     left: 0;
 }
 
