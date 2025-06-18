@@ -30,7 +30,7 @@ function typeWriter(element, text, delay = 50) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.querySelector('.toggle-panel');
-    const rightPanel = document.querySelector('.right-panel');
+    const webPanel = document.querySelector('.web-panel');
     const leftPanel = document.querySelector('.left-panel');
     const initialState = document.querySelector('.initial-state');
     const greetingBox = document.querySelector('.greeting-box');
@@ -41,23 +41,23 @@ document.addEventListener('DOMContentLoaded', function() {
         initialState.style.display = 'none';
         greetingBox.style.display = 'flex';
         // Start with uncollapsed panel
-        rightPanel.classList.remove('collapsed');
+        webPanel.classList.remove('collapsed');
         toggleBtn.textContent = '▶';
     } else {
         // Initial state - hide greeting and show welcome screen
         greetingBox.style.display = 'none';
         initialState.style.display = 'flex';
         // Center the left panel
-        rightPanel.classList.add('collapsed');
+        webPanel.classList.add('collapsed');
         toggleBtn.textContent = '◀';
     }
     
     toggleBtn.addEventListener('click', function() {
         // Toggle the collapsed state
-        rightPanel.classList.toggle('collapsed');
+        webPanel.classList.toggle('collapsed');
         
         // Update button icon
-        this.textContent = rightPanel.classList.contains('collapsed') ? '◀' : '▶';
+        this.textContent = webPanel.classList.contains('collapsed') ? '◀' : '▶';
     });
 
     // Form submission handling
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initialState.style.display = 'none';
         
         // Get query and show greeting box
-        const queryText = this.querySelector('input[name="query"]').value;
+        const queryText = this.querySelector('#queryInput').value;
         greetingBox.style.display = 'flex';
         const greetingText = greetingBox.querySelector('p');
         greetingText.textContent = queryText; // Set query text
@@ -86,8 +86,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 1000);
         }, 300);
 
-        // Show the right panel if it's collapsed
-        rightPanel.classList.remove('collapsed');
+        // Show the web panel if it's collapsed
+        webPanel.classList.remove('collapsed');
         toggleBtn.textContent = '▶';
         
         // Add loading class to show terminal
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             terminal.innerHTML = '';
             
             // Add initial terminal messages
-            addTerminalLine(`$ Processing query: "${this.querySelector('input[name="query"]').value}"`);
+            addTerminalLine(`$ Processing query: "${this.querySelector('#queryInput').value}"`);
             addTerminalLine('$ Initiating search pipeline...');
             
             // Show processing stages with timing
