@@ -507,8 +507,12 @@ app.post("/analyze", async (req, res) => {
       ]);
 
       serpResults = {
-        organic_results: webResults.organic_results?.slice(0, 10) || [],
-        image_results: imageResults.images_results?.slice(0, 12) || []
+        organic_results: Array.isArray(webResults.result) ? webResults.result.slice(0, 10).map(r => ({
+          title: r.title,
+          link: r.href,
+          snippet: r.body
+        })) : [],
+        image_results: imageResults.image_results?.slice(0, 12) || []
       };
     } catch (searchError) {
       logger.error({

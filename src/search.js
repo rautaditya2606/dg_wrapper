@@ -18,7 +18,13 @@ export class RapidAPISearchClient {
                 'x-rapidapi-host': 'google-api31.p.rapidapi.com',
                 'x-rapidapi-key': this.apiKey
             },
-            data: { query: params.q }
+            data: {
+                text: params.q,
+                safesearch: 'off',
+                timelimit: '',
+                region: 'wt-wt',
+                max_results: 20
+            }
         };
         const response = await axios(options);
         return response.data;
