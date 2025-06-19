@@ -442,6 +442,21 @@
         const imageResults = document.getElementById("image-results");
         const webPanel = document.querySelector(".web-panel");
 
+        // --- FIX: Observe web-results for search-result and image-result-item, toggle panel visibility ---
+        const observer = new MutationObserver(() => {
+          const hasWebResults = webResults && webResults.querySelectorAll('.search-result').length > 0;
+          const hasImageResults = webResults && webResults.querySelectorAll('.image-result-item').length > 0;
+          if (hasWebResults || hasImageResults) {
+            document.body.classList.add('has-search-results');
+          } else {
+            document.body.classList.remove('has-search-results');
+          }
+        });
+        if (webResults) {
+          observer.observe(webResults, { childList: true, subtree: true });
+        }
+        // --- END FIX ---
+
         chatForm.addEventListener("submit", async (e) => {
           e.preventDefault();
 
@@ -554,46 +569,44 @@
         });
 
         function updateSearchResults(results) {
+          // Always show the web panel after a search
+          document.body.classList.add('search-active');
           // Clear previous results
-          webResults.innerHTML = "";
+          webResults.innerHTML = '';
 
-          // Combine image and web results
+          // Always show the header
+          const header = document.createElement('div');
+          header.className = 'panel-header';
+          header.innerHTML = '<h2>Web Search Results</h2>';
+          webResults.appendChild(header);
+
+          // Show web results if present
           if (results.organic_results?.length > 0) {
-            webResults.innerHTML = results.organic_results
-              .map((result, index) => {
-                const image = results.image_results?.[index];
-                return `
-                                <div class="search-result">
-                                    ${
-                                      image
-                                        ? `
-                                    <div class="search-result-image">
-                                        <a href="${image.link}" target="_blank" rel="noopener noreferrer">
-                                            <img src="${image.thumbnail}" alt="${image.title}" loading="lazy">
-                                        </a>
-                                    </div>
-                                    `
-                                        : ""
-                                    }
-                                    <div class="search-result-content">
-                                        <h3 class="result-title">
-                                            <a href="${
-                                              result.link
-                                            }" target="_blank" rel="noopener noreferrer">
-                                                ${result.title}
-                                            </a>
-                                        </h3>
-                                        <p class="result-snippet">${
-                                          result.snippet || ""
-                                        }</p>
-                                        <div class="result-url">${
-                                          result.displayed_link || result.link
-                                        }</div>
-                                    </div>
-                                </div>
-                            `;
-              })
-              .join("");
+            const resultsList = document.createElement('div');
+            resultsList.className = 'search-results-list';
+            results.organic_results.forEach((result, index) => {
+              const resultDiv = document.createElement('div');
+              resultDiv.className = 'search-result';
+              resultDiv.innerHTML = `
+                <div class="search-result-content">
+                  <h3 class="result-title">
+                    <a href="${result.link}" target="_blank" rel="noopener noreferrer">
+                      ${result.title}
+                    </a>
+                  </h3>
+                  <p class="result-snippet">${result.snippet || ''}</p>
+                  <div class="result-url">${result.displayed_link || result.link}</div>
+                </div>
+              `;
+              resultsList.appendChild(resultDiv);
+            });
+            webResults.appendChild(resultsList);
+          } else {
+            // Show explicit no results message
+            const noResults = document.createElement('div');
+            noResults.className = 'no-results';
+            noResults.innerHTML = '<i class="fas fa-search"></i><p>No web results found</p>';
+            webResults.appendChild(noResults);
           }
         }
       });

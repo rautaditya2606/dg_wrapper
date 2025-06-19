@@ -7,6 +7,7 @@
     <title>Search Analysis</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/typewriter.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="/js/results-tabs.js" defer></script>
 </head>
 
@@ -224,39 +225,97 @@
                     </div>
                 </div>
 
-                <!-- Search Results with Tabs -->
-                <% if(result && result.searchResults) { %>
-                    <div class="results-tabs">
-                        <button class="tab active" data-tab="web">Web Results</button>
-                        <button class="tab" data-tab="images">Images</button>
-                    </div>
-                    
-                    <!-- Web Results -->
-                    <div class="web-results" id="web-results">
-                        <% result.searchResults.forEach(result => { %>
-                            <div class="search-result">
-                                <h3 class="result-title">
-                                    <a href="<%= result.link %>" target="_blank" rel="noopener noreferrer">
-                                        <%= result.title %>
-                                    </a>
-                                </h3>
-                                <p class="result-snippet"><%= result.snippet %></p>
-                                <div class="result-url"><%= result.displayed_link || result.link %></div>
-                            </div>
-                        <% }); %>
-                    </div>
-                    
-                    <!-- Image Results -->
-                    <div class="image-results" id="image-results" style="display: none;">
-                        <% if(result.images && result.images.length > 0) { %>
-                            <% result.images.forEach(image => { %>
-                                <div class="image-result">
-                                    <a href="<%= image.link %>" target="_blank" rel="noopener noreferrer">
-                                        <img src="<%= image.thumbnail %>" alt="<%= image.title %>" loading="lazy">
-                                    </a>
+                <!-- Search Results Container -->
+                <% if(result && (result.searchResults || result.images)) { %>
+                    <div class="web-results-container">
+                        <!-- Results Tabs -->
+                        <div class="results-tabs">
+                            <button class="tab active" data-tab="web">
+                                <i class="fas fa-globe"></i>
+                                Web Results
+                                <% if(result.searchResults && result.searchResults.length > 0) { %>
+                                    <span class="tab-count"><%= result.searchResults.length %></span>
+                                <% } %>
+                            </button>
+                            <button class="tab" data-tab="images">
+                                <i class="fas fa-images"></i>
+                                Images
+                                <% if(result.images && result.images.length > 0) { %>
+                                    <span class="tab-count"><%= result.images.length %></span>
+                                <% } %>
+                            </button>
+                        </div>
+                        
+                        <!-- Web Results Section -->
+                        <div class="results-section" id="web-results">
+                            <% if(result.searchResults && result.searchResults.length > 0) { %>
+                                <div class="results-header">
+                                    <h3>Web Search Results</h3>
+                                    <p>Found <%= result.searchResults.length %> results for "<%= query %>"</p>
                                 </div>
-                            <% }); %>
-                        <% } %>
+                                <div class="search-results-list">
+                                    <% result.searchResults.forEach((result, index) => { %>
+                                        <div class="search-result-item">
+                                            <div class="result-number"><%= index + 1 %></div>
+                                            <div class="result-content">
+                                                <h4 class="result-title">
+                                                    <a href="<%= result.link %>" target="_blank" rel="noopener noreferrer">
+                                                        <%= result.title %>
+                                                    </a>
+                                                </h4>
+                                                <p class="result-snippet"><%= result.snippet %></p>
+                                                <div class="result-meta">
+                                                    <span class="result-url"><%= result.displayed_link || result.link %></span>
+                                                    <% if(result.date) { %>
+                                                        <span class="result-date"><%= result.date %></span>
+                                                    <% } %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <% }); %>
+                                </div>
+                            <% } else { %>
+                                <div class="no-results">
+                                    <i class="fas fa-search"></i>
+                                    <p>No web results found</p>
+                                </div>
+                            <% } %>
+                        </div>
+                        
+                        <!-- Image Results Section -->
+                        <div class="results-section" id="image-results" style="display: none;">
+                            <% if(result.images && result.images.length > 0) { %>
+                                <div class="results-header">
+                                    <h3>Image Search Results</h3>
+                                    <p>Found <%= result.images.length %> images for "<%= query %>"</p>
+                                </div>
+                                <div class="image-grid">
+                                    <% result.images.forEach((image, index) => { %>
+                                        <div class="image-result-item">
+                                            <a href="<%= image.link %>" target="_blank" rel="noopener noreferrer" class="image-link">
+                                                <img src="<%= image.thumbnail %>" alt="<%= image.title %>" loading="lazy">
+                                                <div class="image-overlay">
+                                                    <span class="image-title"><%= image.title %></span>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    <% }); %>
+                                </div>
+                            <% } else { %>
+                                <div class="no-results">
+                                    <i class="fas fa-images"></i>
+                                    <p>No images found</p>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                <% } else { %>
+                    <div class="web-panel-placeholder">
+                        <div class="placeholder-content">
+                            <i class="fas fa-search"></i>
+                            <h3>Search Results</h3>
+                            <p>Web search results will appear here when you perform a search.</p>
+                        </div>
                     </div>
                 <% } %>
             </div>

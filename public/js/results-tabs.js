@@ -14,11 +14,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show/hide results based on selected tab
             const tabType = tab.dataset.tab;
             if (tabType === 'web') {
-                webResults.style.display = 'flex';
-                imageResults.style.display = 'none';
+                if (webResults) {
+                    webResults.style.display = 'block';
+                }
+                if (imageResults) {
+                    imageResults.style.display = 'none';
+                }
             } else if (tabType === 'images') {
-                webResults.style.display = 'none';
-                imageResults.style.display = 'grid';
+                if (webResults) {
+                    webResults.style.display = 'none';
+                }
+                if (imageResults) {
+                    imageResults.style.display = 'block';
+                }
             }
         });
     });

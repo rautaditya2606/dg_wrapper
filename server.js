@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import pino from 'pino';
 import HttpsProxyAgent from 'https-proxy-agent';
 import { chat, formatAIResponse } from './src/assistant.js';
+import { RapidAPISearchClient } from './src/search.js';
 
 // Initialize dotenv
 dotenv.config();
@@ -125,11 +126,8 @@ const withRetry = async (fn, retries = 5, backoff = (count) => Math.min(1000 * M
   }
 };
 
-// Import the search client
-import { SerpSearchClient } from './src/search.js';
-
 // Initialize the search client
-const searchClient = new SerpSearchClient(process.env.SERPAPI_API_KEY);
+const searchClient = new RapidAPISearchClient(process.env.RAPIDAPI_KEY);
 
 // Fix timeout issue in handleSerpApiRequest
 // Update handleSerpApiRequest to use SerpSearchClient methods
@@ -641,14 +639,16 @@ app.get("/test", (req, res) => {
   });
 });
 
+// Initialize the RapidAPI search client for /test
+const rapidApiSearchClient = new RapidAPISearchClient(process.env.RAPIDAPI_KEY);
+
 // Test search endpoint
 app.post("/test/search", async (req, res) => {
   const query = req.body.query;
-  
   try {
     // Validate input
     const validatedQuery = validateInput(query);
-    
+
     // Let Claude decide if web search is needed
     let doWebSearch = true;
     try {
@@ -665,19 +665,21 @@ app.post("/test/search", async (req, res) => {
       });
     }
 
-    // Perform search with timeout
-    const [searchResults, textResults] = await performSearch(validatedQuery);
+    // Use RapidAPI for web and image search
+    const [webResults, imageResults] = await Promise.all([
+      rapidApiSearchClient.searchLocal({ q: validatedQuery }),
+      rapidApiSearchClient.searchImages({ q: validatedQuery })
+    ]);
 
     res.json({
       query: validatedQuery,
-      webResults: textResults.organic_results || [],
-      imageResults: searchResults.images_results || [],
+      webResults: webResults.organic_results || [],
+      imageResults: imageResults.image_results || [],
       isConversational: false
     });
-
   } catch (error) {
     logger.error('Test search error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
       isConversational: false
     });

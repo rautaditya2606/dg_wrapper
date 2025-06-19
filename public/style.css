@@ -73,6 +73,14 @@ body {
     display: flex;
     flex-direction: column;
     margin: 0 auto;
+    transition: width 0.3s ease, margin 0.3s ease;
+}
+
+/* When web-panel is visible, adjust chat-panel */
+body.search-active .chat-panel {
+    width: 60%;
+    margin-right: 0;
+    margin-left: auto;
 }
 
 .web-panel {
@@ -81,7 +89,7 @@ body {
     right: 20px;
     top: 80px;
     bottom: 120px;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, width 0.3s ease;
     display: flex;
     flex-direction: column;
     background-color: var(--surface-dark);
@@ -89,6 +97,13 @@ body {
     transform: translateX(120%);
     border-radius: 12px;
     overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Show web-panel when search results are available */
+body.search-active .web-panel {
+    transform: translateX(0);
+    width: calc(40% - 20px);
 }
 
 .web-panel:not(.collapsed) {
@@ -1312,4 +1327,276 @@ body.search-active .initial-state {
 
 .message.assistant em {
     color: var(--accent-green);
+}
+
+/* Web Panel Styles */
+.web-results-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.results-tabs {
+    display: flex;
+    background-color: var(--surface-dark);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0;
+}
+
+.tab {
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+}
+
+.tab.active {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tab-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: inherit;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.results-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.results-header {
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--surface-dark);
+}
+
+.results-header h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-light);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.results-header p {
+    margin: 0;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.search-results-list {
+    padding: 1rem 0;
+}
+
+.search-result-item {
+    display: flex;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.3s ease;
+}
+
+.search-result-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.result-number {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: var(--accent-blue);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.result-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.result-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.result-title a {
+    color: var(--accent-blue);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.result-title a:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
+}
+
+.result-snippet {
+    color: var(--text-dark);
+    margin: 0.5rem 0;
+    line-height: 1.5;
+    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.result-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.result-url {
+    color: var(--accent-green);
+    font-size: 0.8rem;
+    font-family: monospace;
+}
+
+.result-date {
+    color: var(--text-dark);
+    font-size: 0.8rem;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.image-result-item {
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: var(--surface-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.image-result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.image-link {
+    display: block;
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+}
+
+.image-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.image-result-item:hover .image-link img {
+    transform: scale(1.05);
+}
+
+.image-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    padding: 1rem 0.5rem 0.5rem 0.5rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.image-result-item:hover .image-overlay {
+    opacity: 1;
+}
+
+.image-title {
+    color: white;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-dark);
+}
+
+.no-results i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-results p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.web-panel-placeholder {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.placeholder-content {
+    text-align: center;
+    color: var(--text-dark);
+}
+
+.placeholder-content i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.placeholder-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-light);
+    font-size: 1.2rem;
+}
+
+.placeholder-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }

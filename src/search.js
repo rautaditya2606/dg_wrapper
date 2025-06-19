@@ -1,40 +1,44 @@
-import { GoogleSearch } from 'google-search-results-nodejs';
+import axios from 'axios';
 
-export class SerpSearchClient {
+export class RapidAPISearchClient {
     constructor(apiKey) {
-        this.client = new GoogleSearch(apiKey);
+        this.apiKey = apiKey;
+        this.baseUrl = 'https://google-api31.p.rapidapi.com/websearch';
     }
 
     async searchLocal(params) {
-        // Ensure required parameters are present
         if (!params.q) {
             throw new Error('Query parameter "q" is required');
         }
-
-        const searchParams = {
-            ...params,
-            engine: "google"
+        const options = {
+            method: 'POST',
+            url: this.baseUrl,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-rapidapi-host': 'google-api31.p.rapidapi.com',
+                'x-rapidapi-key': this.apiKey
+            },
+            data: { query: params.q }
         };
-
-        return new Promise((resolve, reject) => {
-            this.client.json(searchParams, (data) => resolve(data), (error) => reject(error));
-        });
+        const response = await axios(options);
+        return response.data;
     }
 
     async searchImages(params) {
-        // Ensure required parameters are present
         if (!params.q) {
             throw new Error('Query parameter "q" is required');
         }
-
-        const searchParams = {
-            ...params,
-            engine: "google",
-            tbm: "isch"
+        const options = {
+            method: 'POST',
+            url: this.baseUrl,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-rapidapi-host': 'google-api31.p.rapidapi.com',
+                'x-rapidapi-key': this.apiKey
+            },
+            data: { query: params.q, type: 'images' }
         };
-
-        return new Promise((resolve, reject) => {
-            this.client.json(searchParams, (data) => resolve(data), (error) => reject(error));
-        });
+        const response = await axios(options);
+        return response.data;
     }
 }
