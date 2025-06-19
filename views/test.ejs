@@ -15,7 +15,7 @@
         --surface-dark: #2d2d2d;
         --text-light: #e0e0e0;
         --text-dark: #a0a0a0;
-        --accent-blue: #2196f3;
+        --accent-blue: white;
         --accent-dark: #1976d2;
         --message-user: #343435;
         --message-assistant: #2d2d2d;
@@ -114,6 +114,7 @@
       }
 
       .custom-panel-toggle {
+        display: none;
         position: absolute;
         right: 0;
         top: 0;
@@ -129,6 +130,9 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         z-index: 20;
         transition: right 0.3s;
+      }
+      body.show-panel-toggle .custom-panel-toggle {
+        display: flex;
       }
 
       .custom-panel-toggle i {
@@ -149,6 +153,12 @@
         flex: 1;
         overflow-y: auto;
         height: 100%;
+        /* Hide scrollbar for all browsers */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE 10+ */
+      }
+      .custom-panel-content::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
       }
 
       .panel-container {
@@ -666,10 +676,11 @@
           const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
           loadingMessage.textContent = isWebSearch ? "Searching on web..." : "Answering...";
 
-          // Only open custom-panel for web search queries
+          // Open custom-panel and show loader immediately for web search queries
           if (isWebSearch) {
             customPanel.classList.add("open");
             document.body.classList.add("custom-panel-open");
+            document.body.classList.add("show-panel-toggle");
             customPanelBody.innerHTML = `<div class='custom-panel-loader'>
               <div>Searching the web...</div>
               <div class='loader-dots'>
@@ -679,6 +690,7 @@
           } else {
             customPanel.classList.remove("open");
             document.body.classList.remove("custom-panel-open");
+            document.body.classList.remove("show-panel-toggle");
           }
 
           try {
@@ -764,9 +776,11 @@
             // Scroll chat to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            // Show custom panel on any query
-            customPanel.classList.add("open");
-            document.body.classList.add("custom-panel-open");
+            // Show custom panel only for web search queries
+            if (isWebSearch) {
+              customPanel.classList.add("open");
+              document.body.classList.add("custom-panel-open");
+            }
           } catch (error) {
             console.error("Error:", error);
             const errorMessage = document.createElement("div");
@@ -881,12 +895,14 @@
           if (isOpen) {
             customPanel.classList.remove("open");
             document.body.classList.remove("custom-panel-open");
+            document.body.classList.remove("show-panel-toggle");
             customPanelToggleIcon.classList.remove("fa-xmark");
             customPanelToggleIcon.classList.add("fa-bars");
             customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
           } else {
             customPanel.classList.add("open");
             document.body.classList.add("custom-panel-open");
+            document.body.classList.add("show-panel-toggle");
             customPanelToggleIcon.classList.remove("fa-bars");
             customPanelToggleIcon.classList.add("fa-xmark");
             customPanelToggleIcon.setAttribute('aria-label', 'Close panel');
