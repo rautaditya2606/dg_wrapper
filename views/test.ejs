@@ -95,6 +95,17 @@
         background: #383638;
         position: relative;
         z-index: 2;
+        /* Hide scrollbar for all browsers */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE 10+ */
+        border-radius: 18px 18px 18px 18px;
+        margin-right: 24px;
+        margin-top: 32px;
+        margin-bottom: 32px;
+        height: calc(100vh - 119px);
+      }
+      .custom-panel::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
       }
 
       .custom-panel.open {
@@ -105,11 +116,11 @@
       .custom-panel-toggle {
         position: absolute;
         right: 0;
-        top: 50%;
-        transform: translateY(-50%);
+        top: 0;
+        transform: none;
         width: 32px;
         height: 48px;
-        background: var(--surface-dark);
+        /* background: var(--surface-dark); */
         border-radius: 0 8px 8px 0;
         display: flex;
         align-items: center;
@@ -120,14 +131,17 @@
         transition: right 0.3s;
       }
 
-      .custom-panel-open .custom-panel-toggle i {
-        transform: rotate(0deg);
-        transition: transform 0.3s;
-      }
-
       .custom-panel-toggle i {
-        transform: rotate(180deg);
-        transition: transform 0.3s;
+        font-size: 1.5rem;
+        transition: transform 0.3s, opacity 0.3s;
+      }
+      .custom-panel-toggle i.fa-xmark {
+        transform: rotate(0deg) scale(1.1);
+        opacity: 1;
+      }
+      .custom-panel-toggle i.fa-bars {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
       }
 
       .custom-panel-content {
@@ -475,6 +489,41 @@
         margin: 0.25rem 0 0 0;
         line-height: 1.5;
       }
+      .custom-panel-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 180px;
+        color: var(--accent-blue);
+        font-size: 1.2rem;
+        gap: 1.5rem;
+      }
+      .custom-panel-loader .loader-dots {
+        display: flex;
+        gap: 8px;
+      }
+      .custom-panel-loader .loader-dots span {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent-blue);
+        opacity: 0.7;
+        animation: custom-bounce 1s infinite alternate;
+      }
+      .custom-panel-loader .loader-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .custom-panel-loader .loader-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes custom-bounce {
+        to {
+          transform: translateY(-8px);
+          opacity: 1;
+        }
+      }
     </style>
   </head>
   <body>
@@ -505,7 +554,7 @@
         </form>
         <!-- Toggle icon always visible on right edge of chat-panel -->
         <div class="custom-panel-toggle" id="customPanelToggle" title="Toggle panel">
-          <i class="fa-solid fa-chevron-left" id="customPanelToggleIcon"></i>
+          <i class="fa-solid fa-bars" id="customPanelToggleIcon" aria-label="Open panel"></i>
         </div>
       </div>
 
@@ -617,6 +666,21 @@
           const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
           loadingMessage.textContent = isWebSearch ? "Searching on web..." : "Answering...";
 
+          // Only open custom-panel for web search queries
+          if (isWebSearch) {
+            customPanel.classList.add("open");
+            document.body.classList.add("custom-panel-open");
+            customPanelBody.innerHTML = `<div class='custom-panel-loader'>
+              <div>Searching the web...</div>
+              <div class='loader-dots'>
+                <span></span><span></span><span></span>
+              </div>
+            </div>`;
+          } else {
+            customPanel.classList.remove("open");
+            document.body.classList.remove("custom-panel-open");
+          }
+
           try {
             const response = await fetch("/analyze", {
               method: "POST",
@@ -631,14 +695,10 @@
             // DEBUG: Log the full response
             console.log('ANALYZE RESPONSE:', data);
 
-            // DEBUG: Show raw response in custom panel
-            customPanel.classList.add("open");
-            document.body.classList.add("custom-panel-open");
-
             // Show web results in custom panel if present
             if (data.serpResults && (data.serpResults.organic_results?.length > 0 || data.serpResults.image_results?.length > 0)) {
               customPanelBody.innerHTML = renderStructuredWebResults(data.serpResults);
-            } else {
+            } else if (isWebSearch) {
               customPanelBody.innerHTML = `<p>No web results found</p>`;
             }
 
@@ -766,9 +826,23 @@
           if (results.organic_results?.length > 0) {
             html += '<div class="structured-web-results">';
             results.organic_results.forEach((result) => {
+              // Favicon fallback if no image
+              let imageHtml = '';
+              if (result.image) {
+                imageHtml = `<div class='search-result-image'><img src='${result.image}' alt='Result image'></div>`;
+              } else if (result.link) {
+                try {
+                  const url = new URL(result.link);
+                  const domain = url.hostname;
+                  const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                  imageHtml = `<div class='search-result-image'><img src='${favicon}' alt='Favicon'></div>`;
+                } catch (e) {
+                  // fallback: no image
+                }
+              }
               html += `
                 <div class="search-result card">
-                  ${result.image ? `<div class='search-result-image'><img src='${result.image}' alt='Result image'></div>` : ''}
+                  ${imageHtml}
                   <div class="search-result-content">
                     <h3 class="result-title">
                       <a href="${result.link}" target="_blank" rel="noopener noreferrer">
@@ -807,11 +881,28 @@
           if (isOpen) {
             customPanel.classList.remove("open");
             document.body.classList.remove("custom-panel-open");
+            customPanelToggleIcon.classList.remove("fa-xmark");
+            customPanelToggleIcon.classList.add("fa-bars");
+            customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
           } else {
             customPanel.classList.add("open");
             document.body.classList.add("custom-panel-open");
+            customPanelToggleIcon.classList.remove("fa-bars");
+            customPanelToggleIcon.classList.add("fa-xmark");
+            customPanelToggleIcon.setAttribute('aria-label', 'Close panel');
           }
         });
+
+        // Set initial icon state on load
+        if (customPanel.classList.contains("open")) {
+          customPanelToggleIcon.classList.remove("fa-bars");
+          customPanelToggleIcon.classList.add("fa-xmark");
+          customPanelToggleIcon.setAttribute('aria-label', 'Close panel');
+        } else {
+          customPanelToggleIcon.classList.remove("fa-xmark");
+          customPanelToggleIcon.classList.add("fa-bars");
+          customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
+        }
       });
     </script>
   </body>
