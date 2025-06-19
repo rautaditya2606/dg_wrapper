@@ -534,6 +534,45 @@
           opacity: 1;
         }
       }
+
+      /* Animation for custom panel default message */
+      @keyframes fadeOpacity {
+        0% { opacity: 0.4; }
+        25% { opacity: 0.7; }
+        50% { opacity: 1; }
+        75% { opacity: 0.7; }
+        100% { opacity: 0.4; }
+      }
+      .custom-panel-default-message {
+        animation: fadeOpacity 2.5s infinite;
+        will-change: opacity;
+      }
+
+      /* Animated dots for custom panel placeholder */
+      .custom-panel-animated-icon {
+        display: flex;
+        gap: 0.7rem;
+        margin-top: 1.5rem;
+      }
+      .custom-panel-animated-icon .dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--accent-blue);
+        opacity: 0.5;
+        animation: bounceDot 1.2s infinite both;
+      }
+      .custom-panel-animated-icon .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .custom-panel-animated-icon .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes bounceDot {
+        0%, 100% { transform: translateY(0); opacity: 0.5; }
+        30% { transform: translateY(-18px); opacity: 1; }
+        60% { transform: translateY(0); opacity: 0.7; }
+      }
     </style>
   </head>
   <body>
@@ -544,6 +583,16 @@
           <h2>Chat Assistant</h2>
         </div>
         <div class="messages-container">
+          <div id="chatPanelPlaceholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 220px;">
+            <div class="custom-panel-animated-icon">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+            <div style="margin-top: 2rem; color: var(--text-dark); font-size: 1.13rem; text-align: center; max-width: 320px;">
+              Start a conversation or search to see messages here.
+            </div>
+          </div>
           <div id="loadingMessage" class="loading-message"></div>
           <% if (results && results.length > 0) { %>
             <% results.forEach((result) => { %>
@@ -580,8 +629,21 @@
       <!-- Custom Independent Panel -->
       <div class="custom-panel" id="customPanel">
         <div class="custom-panel-content">
-          <h2>Custom Panel</h2>
-          <div id="customPanelBody">This is a new independent panel.</div>
+          <!-- Animated placeholder shown until first query -->
+          <div id="customPanelPlaceholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 220px;">
+            <div class="custom-panel-animated-icon">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+            <div style="margin-top: 2rem; color: var(--text-dark); font-size: 1.13rem; text-align: center; max-width: 320px;">
+              Start a conversation or search to see web results here.
+            </div>
+          </div>
+          <div id="customPanelBody" class="custom-panel-default-message" style="color: var(--text-dark); font-size: 1.08rem; text-align: center; margin-top: 2.5rem; display: none;">
+            <i class="fa-solid fa-magnifying-glass" style="font-size: 2.2rem; color: var(--accent-blue); margin-bottom: 1rem;"></i>
+            <div style="margin-top: 1rem;">Web search results will be displayed here.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -632,6 +694,8 @@
         const customPanelToggle = document.getElementById("customPanelToggle");
         const customPanelToggleIcon = document.getElementById("customPanelToggleIcon");
         const customPanelBody = document.getElementById("customPanelBody");
+        const customPanelPlaceholder = document.getElementById("customPanelPlaceholder");
+        const chatPanelPlaceholder = document.getElementById("chatPanelPlaceholder");
 
         // --- FIX: Observe web-results for search-result and image-result-item, toggle panel visibility ---
         const observer = new MutationObserver(() => {
@@ -668,6 +732,11 @@
           // Clear input
           queryInput.value = "";
 
+          // Always open the custom panel on any query
+          customPanel.classList.add("open");
+          document.body.classList.add("custom-panel-open");
+          document.body.classList.add("show-panel-toggle");
+
           // Show loading message based on query type
           loadingMessage.style.display = "block";
           
@@ -675,23 +744,6 @@
           const webSearchKeywords = ["search", "find", "look up", "google", "what is", "how to", "show me"];
           const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
           loadingMessage.textContent = isWebSearch ? "Searching on web..." : "Answering...";
-
-          // Open custom-panel and show loader immediately for web search queries
-          if (isWebSearch) {
-            customPanel.classList.add("open");
-            document.body.classList.add("custom-panel-open");
-            document.body.classList.add("show-panel-toggle");
-            customPanelBody.innerHTML = `<div class='custom-panel-loader'>
-              <div>Searching the web...</div>
-              <div class='loader-dots'>
-                <span></span><span></span><span></span>
-              </div>
-            </div>`;
-          } else {
-            customPanel.classList.remove("open");
-            document.body.classList.remove("custom-panel-open");
-            document.body.classList.remove("show-panel-toggle");
-          }
 
           try {
             const response = await fetch("/analyze", {
@@ -776,10 +828,15 @@
             // Scroll chat to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            // Show custom panel only for web search queries
-            if (isWebSearch) {
-              customPanel.classList.add("open");
-              document.body.classList.add("custom-panel-open");
+            // On first query, hide placeholder and show results message
+            if (customPanelPlaceholder && customPanelPlaceholder.style.display !== 'none') {
+              customPanelPlaceholder.style.display = 'none';
+              customPanelBody.style.display = '';
+            }
+
+            // Hide chat panel placeholder on first query
+            if (chatPanelPlaceholder && chatPanelPlaceholder.style.display !== 'none') {
+              chatPanelPlaceholder.style.display = 'none';
             }
           } catch (error) {
             console.error("Error:", error);
@@ -918,6 +975,11 @@
           customPanelToggleIcon.classList.remove("fa-xmark");
           customPanelToggleIcon.classList.add("fa-bars");
           customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
+        }
+
+        // Hide chat panel placeholder if there are already messages
+        if (messagesContainer.querySelectorAll('.message').length > 0) {
+          if (chatPanelPlaceholder) chatPanelPlaceholder.style.display = 'none';
         }
       });
     </script>
