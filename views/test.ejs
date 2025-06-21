@@ -978,31 +978,21 @@
           if (results.organic_results?.length > 0) {
             html += '<div class="structured-web-results">';
             results.organic_results.forEach((result) => {
-              // Try multiple approaches to get real images
-              let imageHtml = '';
-              
-              // Approach 1: If result already has an image
-              if (result.image) {
-                imageHtml = `<div class='search-result-image'><img src='${result.image}' alt='Result image' onerror="this.style.display='none'"></div>`;
-              } 
-              // Approach 2: Try to get image from the website's OpenGraph or meta tags
-              else if (result.link) {
+              // Use favicon for all results
+              let faviconHtml = '';
+              if (result.link) {
                 try {
                   const url = new URL(result.link);
                   const domain = url.hostname;
-                  
-                  // Try to get a preview image using a reliable service
-                  const previewImage = `https://image.thum.io/get/width/100/crop/100/${encodeURIComponent(result.link)}`;
-                  
-                  imageHtml = `
-                    <div class='search-result-image'>
-                      <img src='${previewImage}' alt='Preview' 
-                           onerror="this.parentElement.innerHTML='<div class=\\'search-result-image\\' style=\\'background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;\\'><i class=\\'fas fa-link\\' style=\\'color: white; font-size: 1.2rem;\\'></i></div>'">
-                    </div>`;
+                  const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                  faviconHtml = `<div class='search-result-image'><img src='${favicon}' alt='Favicon' style='width: 32px; height: 32px; object-fit: contain;'></div>`;
                 } catch (e) {
                   // fallback: show a gradient background with link icon
-                  imageHtml = `<div class='search-result-image' style='background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;'><i class='fas fa-link' style='color: white; font-size: 1.2rem;'></i></div>`;
+                  faviconHtml = `<div class='search-result-image' style='background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;'><i class='fas fa-link' style='color: white; font-size: 1.2rem;'></i></div>`;
                 }
+              } else {
+                // fallback: show a gradient background with link icon
+                faviconHtml = `<div class='search-result-image' style='background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;'><i class='fas fa-link' style='color: white; font-size: 1.2rem;'></i></div>`;
               }
               
               // Ensure link is valid
@@ -1010,7 +1000,7 @@
               
               html += `
                 <div class="search-result card">
-                  ${imageHtml}
+                  ${faviconHtml}
                   <div class="search-result-content">
                     <h3 class="result-title">
                       <a href="${validLink}" target="_blank" rel="noopener noreferrer">
