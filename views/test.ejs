@@ -45,6 +45,7 @@
 
       /* Panel states */
       .web-panel {
+        display: none; /* Hide web panel permanently */
         width: 0;
         flex-shrink: 0;
         height: 100%;
@@ -54,10 +55,20 @@
         border-left: 1px solid var(--border-color);
         transition: width 0.3s ease;
         overflow: hidden;
+        border-radius: 18px 18px 18px 18px;
+        margin-right: 24px;
+        margin-top: 32px;
+        margin-bottom: 32px;
+        height: calc(100vh - 119px);
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 1;
       }
 
       /* Panel state when search results exist */
       body.has-search-results .web-panel {
+        display: none; /* Keep web panel hidden even when results exist */
         width: 40%;
         overflow-y: auto;
       }
@@ -697,26 +708,60 @@
         const customPanelPlaceholder = document.getElementById("customPanelPlaceholder");
         const chatPanelPlaceholder = document.getElementById("chatPanelPlaceholder");
 
-        // --- FIX: Observe web-results for search-result and image-result-item, toggle panel visibility ---
-        const observer = new MutationObserver(() => {
-          const hasWebResults = webResults && webResults.querySelectorAll('.search-result').length > 0;
-          const hasImageResults = webResults && webResults.querySelectorAll('.image-result-item').length > 0;
-          if (hasWebResults || hasImageResults) {
-            document.body.classList.add('has-search-results');
-          } else {
-            document.body.classList.remove('has-search-results');
-          }
-        });
-        if (webResults) {
-          observer.observe(webResults, { childList: true, subtree: true });
-        }
-        // --- END FIX ---
+        // Observer removed - web panel is hidden permanently
+        // const observer = new MutationObserver(() => {
+        //   const hasWebResults = webResults && webResults.querySelectorAll('.search-result').length > 0;
+        //   const hasImageResults = webResults && webResults.querySelectorAll('.image-result-item').length > 0;
+        //   if (hasWebResults || hasImageResults) {
+        //     document.body.classList.add('has-search-results');
+        //   } else {
+        //     document.body.classList.remove('has-search-results');
+        //   }
+        // });
+        // if (webResults) {
+        //   observer.observe(webResults, { childList: true, subtree: true });
+        // }
 
         chatForm.addEventListener("submit", async (e) => {
           e.preventDefault();
 
+          // Disable form while processing
+          queryInput.disabled = true;
+          const submitButton = chatForm.querySelector('button[type="submit"]');
+          submitButton.disabled = true;
+
+          // Hide chat panel placeholder immediately on first query
+          if (chatPanelPlaceholder && chatPanelPlaceholder.style.display !== 'none') {
+            chatPanelPlaceholder.style.display = 'none';
+          }
+
           const query = queryInput.value.trim();
-          if (!query) return;
+          if (!query) {
+            // Re-enable form if query is empty
+            queryInput.disabled = false;
+            submitButton.disabled = false;
+            return;
+          }
+
+          // Show "Searching on web..." in web panel for all queries
+          webResults.innerHTML = `
+            <div class="panel-header">
+              <h2>Web Search Results</h2>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--text-dark);">
+              <div class="custom-panel-animated-icon">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+              <div style="margin-top: 1rem; font-size: 1.1rem;">Searching on web...</div>
+            </div>
+          `;
+          // document.body.classList.add("has-search-results"); // Removed - web panel is hidden
+
+          // Check if query suggests web search
+          const webSearchKeywords = ["search", "find", "look up", "google", "what is", "how to", "show me"];
+          const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
 
           // Add user message
           const userMessage = document.createElement("div");
@@ -739,14 +784,10 @@
 
           // Show loading message based on query type
           loadingMessage.style.display = "block";
-          
-          // Check if query suggests web search
-          const webSearchKeywords = ["search", "find", "look up", "google", "what is", "how to", "show me"];
-          const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
           loadingMessage.textContent = isWebSearch ? "Searching on web..." : "Answering...";
 
           try {
-            const response = await fetch("/analyze", {
+            const response = await fetch("/test/search", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -757,11 +798,24 @@
             const data = await response.json();
             
             // DEBUG: Log the full response
-            console.log('ANALYZE RESPONSE:', data);
+            console.log('TEST SEARCH RESPONSE:', data);
 
             // Show web results in custom panel if present
-            if (data.serpResults && (data.serpResults.organic_results?.length > 0 || data.serpResults.image_results?.length > 0)) {
-              customPanelBody.innerHTML = renderStructuredWebResults(data.serpResults);
+            if (data.webResults && data.webResults.length > 0) {
+              customPanelBody.innerHTML = renderStructuredWebResults({
+                organic_results: data.webResults.map(result => ({
+                  title: result.title,
+                  link: result.href,
+                  snippet: result.body,
+                  image: null // No image in web results, will use favicon
+                })),
+                image_results: data.imageResults || []
+              });
+            } else if (data.imageResults && data.imageResults.length > 0) {
+              customPanelBody.innerHTML = renderStructuredWebResults({
+                organic_results: [],
+                image_results: data.imageResults
+              });
             } else if (isWebSearch) {
               customPanelBody.innerHTML = `<p>No web results found</p>`;
             }
@@ -771,58 +825,15 @@
 
             // Handle web panel visibility based on response type
             if (data.isConversational) {
-              document.body.classList.remove("has-search-results");
+              // document.body.classList.remove("has-search-results"); // Removed - web panel is hidden
+              // Add a simple response for conversational queries
+              const assistantMessage = document.createElement("div");
+              assistantMessage.className = "message assistant";
+              assistantMessage.textContent = data.message || "This appears to be a conversational query. Please use the main chat interface for better assistance.";
+              messagesContainer.appendChild(assistantMessage);
             } else {
-              // Update web panel content and visibility
-              if (
-                data.serpResults &&
-                (data.serpResults.results?.length > 0 ||
-                  data.serpResults.images_results?.length > 0)
-              ) {
-                document.body.classList.add("has-search-results");
-                updateSearchResults(data.serpResults);
-              } else {
-                document.body.classList.remove("has-search-results");
-              }
-            }
-
-            // Add assistant message with markdown parsing
-            if (data.structuredAnswer) {
-              data.structuredAnswer.forEach((answer) => {
-                const assistantMessage = document.createElement("div");
-                assistantMessage.className = "message assistant";
-
-                const content =
-                  typeof answer === "string"
-                    ? answer
-                    : answer.text
-                    ? answer.text
-                    : JSON.stringify(answer);
-
-                const typingDiv = document.createElement("div");
-                typingDiv.className = "typing typewriter";
-                assistantMessage.appendChild(typingDiv);
-                messagesContainer.appendChild(assistantMessage);
-
-                // Improved typewriter effect
-                const words = content.split(" ");
-                let currentText = "";
-                let wordIndex = 0;
-
-                function typeWord() {
-                  if (wordIndex < words.length) {
-                    currentText +=
-                      (wordIndex > 0 ? " " : "") + words[wordIndex];
-                    typingDiv.innerHTML = parseMarkdown(currentText);
-                    wordIndex++;
-                    const delay = Math.random() * 50 + 30; // Random delay between words
-                    setTimeout(typeWord, delay);
-                  }
-                  // Scroll while typing
-                  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                }
-                typeWord();
-              });
+              // Update web panel content and visibility - REMOVED
+              // All web panel logic removed since it's hidden
             }
 
             // Scroll chat to bottom
@@ -838,6 +849,10 @@
             if (chatPanelPlaceholder && chatPanelPlaceholder.style.display !== 'none') {
               chatPanelPlaceholder.style.display = 'none';
             }
+
+            // Re-enable form after successful response
+            queryInput.disabled = false;
+            submitButton.disabled = false;
           } catch (error) {
             console.error("Error:", error);
             const errorMessage = document.createElement("div");
@@ -846,6 +861,10 @@
               "Sorry, there was an error processing your request.";
             messagesContainer.appendChild(errorMessage);
             document.body.classList.remove("has-search-results");
+
+            // Re-enable form after error
+            queryInput.disabled = false;
+            submitButton.disabled = false;
           }
         });
 
@@ -868,22 +887,66 @@
             results.results.forEach((result, index) => {
               const resultDiv = document.createElement('div');
               resultDiv.className = 'search-result';
+              
+              // Add image if available
+              let imageHtml = '';
+              if (result.image) {
+                imageHtml = `<div class="search-result-image"><img src="${result.image}" alt="Result image"></div>`;
+              } else if (result.href) {
+                try {
+                  const url = new URL(result.href);
+                  const domain = url.hostname;
+                  const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                  imageHtml = `<div class="search-result-image"><img src="${favicon}" alt="Favicon"></div>`;
+                } catch (e) {
+                  // fallback: no image
+                }
+              }
+              
               resultDiv.innerHTML = `
+                ${imageHtml}
                 <div class="search-result-content">
                   <h3 class="result-title">
-                    <a href="${result.link}" target="_blank" rel="noopener noreferrer">
-                      ${result.title}
+                    <a href="${result.href || '#'}" target="_blank" rel="noopener noreferrer">
+                      ${result.title || 'No title'}
                     </a>
                   </h3>
-                  <p class="result-snippet">${result.description || ''}</p>
-                  <div class="result-url">${result.link}</div>
+                  <p class="result-snippet">${result.body || result.description || 'No description'}</p>
+                  <div class="result-url">${result.href || 'No URL'}</div>
                 </div>
               `;
               resultsList.appendChild(resultDiv);
             });
             webResults.appendChild(resultsList);
-          } else {
-            // Show explicit no results message
+          }
+
+          // Show image results if present
+          if (results.images_results?.length > 0) {
+            const imageResultsContainer = document.createElement('div');
+            imageResultsContainer.className = 'image-results';
+            imageResultsContainer.style.marginTop = '2rem';
+            
+            const imageHeader = document.createElement('h3');
+            imageHeader.textContent = 'Image Results';
+            imageHeader.style.marginBottom = '1rem';
+            imageHeader.style.color = 'var(--text-light)';
+            imageResultsContainer.appendChild(imageHeader);
+            
+            results.images_results.forEach((img) => {
+              const imageDiv = document.createElement('div');
+              imageDiv.className = 'image-result';
+              imageDiv.innerHTML = `
+                <a href="${img.href || img.link || '#'}" target="_blank" rel="noopener noreferrer">
+                  <img src="${img.thumbnail || img.image || img.src || ''}" alt="Image result" />
+                </a>
+              `;
+              imageResultsContainer.appendChild(imageDiv);
+            });
+            webResults.appendChild(imageResultsContainer);
+          }
+
+          // Show explicit no results message if no results found
+          if ((!results.results || results.results.length === 0) && (!results.images_results || results.images_results.length === 0)) {
             const noResults = document.createElement('div');
             noResults.className = 'no-results';
             noResults.innerHTML = '<i class="fas fa-search"></i><p>No web results found</p>';
@@ -897,30 +960,37 @@
           if (results.organic_results?.length > 0) {
             html += '<div class="structured-web-results">';
             results.organic_results.forEach((result) => {
-              // Favicon fallback if no image
+              // Always try to get favicon for web results
               let imageHtml = '';
               if (result.image) {
-                imageHtml = `<div class='search-result-image'><img src='${result.image}' alt='Result image'></div>`;
+                imageHtml = `<div class='search-result-image'><img src='${result.image}' alt='Result image' onerror="this.style.display='none'"></div>`;
               } else if (result.link) {
                 try {
                   const url = new URL(result.link);
                   const domain = url.hostname;
                   const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                  imageHtml = `<div class='search-result-image'><img src='${favicon}' alt='Favicon'></div>`;
+                  imageHtml = `<div class='search-result-image'><img src='${favicon}' alt='Favicon' onerror="this.style.display='none'"></div>`;
                 } catch (e) {
                   // fallback: no image
                 }
               }
+              
+              // Ensure link is valid
+              const validLink = result.link && result.link.startsWith('http') ? result.link : '#';
+              
               html += `
                 <div class="search-result card">
                   ${imageHtml}
                   <div class="search-result-content">
                     <h3 class="result-title">
-                      <a href="${result.link}" target="_blank" rel="noopener noreferrer">
-                        ${result.title}
+                      <a href="${validLink}" target="_blank" rel="noopener noreferrer">
+                        ${result.title || 'No title'}
                       </a>
                     </h3>
-                    <p class="result-snippet">${result.snippet || ''}</p>
+                    <p class="result-snippet">${result.snippet || result.body || 'No description available'}</p>
+                    <div class="result-url" style="font-size: 0.8rem; color: var(--text-dark); margin-top: 0.5rem;">
+                      ${result.link || 'No URL'}
+                    </div>
                   </div>
                 </div>
               `;
@@ -929,11 +999,14 @@
           }
           if (results.image_results?.length > 0) {
             html += '<div class="image-results">';
+            html += '<h3 style="color: var(--text-light); margin-bottom: 1rem;">Image Results</h3>';
             results.image_results.forEach((img) => {
+              const validLink = img.link && img.link.startsWith('http') ? img.link : '#';
+              const imageSrc = img.thumbnail || img.image || img.src || '';
               html += `
                 <div class="image-result">
-                  <a href="${img.link}" target="_blank" rel="noopener noreferrer">
-                    <img src="${img.thumbnail || img.image}" alt="Image result" />
+                  <a href="${validLink}" target="_blank" rel="noopener noreferrer">
+                    <img src="${imageSrc}" alt="Image result" onerror="this.style.display='none'" />
                   </a>
                 </div>
               `;

@@ -413,33 +413,6 @@ Do not include any other text or explanation in your response.`
     return decision === 'search';
 }
 
-// Helper function to determine if web search is needed
-// This is now just a fallback in case Claude API fails
-function needsWebSearch(query) {
-  // Always do web search for queries that seem to request facts or information
-  const informationPatterns = [
-    /how\s+to/i,
-    /what\s+is/i,
-    /when\s+was/i,
-    /where\s+is/i,
-    /who\s+is/i,
-    /why\s+does/i,
-    /latest/i,
-    /news/i,
-    /update/i,
-    /example/i,
-    /guide/i,
-    /tutorial/i,
-    /search/i,
-    /find/i,
-    /restaurant/i,
-    /food/i,
-    /place/i
-  ];
-
-  return informationPatterns.some(pattern => pattern.test(query));
-}
-
 // New POST /analyze route
 app.post("/analyze", async (req, res) => {
   const query = req.body.query;
@@ -453,11 +426,12 @@ app.post("/analyze", async (req, res) => {
     try {
       doWebSearch = await shouldDoWebSearch(query);
     } catch (error) {
-      logger.warn('Claude API call failed, falling back to pattern matching', {
+      logger.error('Claude API call failed for web search decision', {
         error: error.message,
         stack: error.stack
       });
-      doWebSearch = needsWebSearch(query);
+      // If Claude fails, default to web search for safety
+      doWebSearch = true;
     }
 
     if (!doWebSearch) {
@@ -585,10 +559,9 @@ Keep each section concise and practical. Focus on providing value without repeat
       stack: error.stack,
       query
     });
-    const isConversational = !needsWebSearch(query);
     res.status(500).json({ 
       error: error.message,
-      isConversational
+      isConversational: false
     });
   }
 });
@@ -658,35 +631,85 @@ app.post("/test/search", async (req, res) => {
     try {
       doWebSearch = await shouldDoWebSearch(query);
     } catch (error) {
-      logger.warn('Claude API call failed, falling back to pattern matching', error);
-      doWebSearch = needsWebSearch(query);
+      logger.error('Claude API call failed for web search decision', error);
+      // If Claude fails, default to web search for safety
+      doWebSearch = true;
     }
 
     if (!doWebSearch) {
-      return res.json({
-        message: "This appears to be a conversational query. Use /analyze for chat.",
-        isConversational: true
-      });
+      // This is a conversational query - let Claude answer from its training data
+      try {
+        const message = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          temperature: 0.7,
+          messages: [
+            { role: "user", content: validatedQuery }
+          ]
+        });
+
+        return res.json({
+          message: message.content[0]?.text || "I'm sorry, I couldn't generate a response.",
+          isConversational: true
+        });
+      } catch (apiError) {
+        logger.error('Error getting conversational response from Claude', apiError);
+        return res.status(500).json({
+          error: 'Failed to get conversational response',
+          isConversational: true
+        });
+      }
     }
 
-    // Use RapidAPI for web and image search
-    const [webResults, imageResults] = await Promise.all([
+    // Use RapidAPI for web and image search with shorter timeout
+    const searchTimeout = 15000; // 15 seconds instead of 30
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(`Search timed out after ${searchTimeout}ms`)), searchTimeout)
+    );
+
+    const searchPromise = Promise.all([
       rapidApiSearchClient.searchLocal({ q: validatedQuery }),
       rapidApiSearchClient.searchImages({ q: validatedQuery })
     ]);
 
+    const [webResults, imageResults] = await Promise.race([searchPromise, timeoutPromise]);
+
+    // Log the results for debugging
+    logger.info({
+      query: validatedQuery,
+      webResultsCount: webResults.organic_results?.length || webResults.results?.length || webResults.result?.length || 0,
+      imageResultsCount: imageResults.image_results?.length || imageResults.images?.length || imageResults.result?.length || 0,
+      webResultsKeys: Object.keys(webResults || {}),
+      imageResultsKeys: Object.keys(imageResults || {}),
+      webResultsSample: webResults?.organic_results?.[0] || webResults?.results?.[0] || webResults?.result?.[0] || 'No results',
+      imageResultsSample: imageResults?.image_results?.[0] || imageResults?.images?.[0] || imageResults?.result?.[0] || 'No results'
+    }, 'Search results received');
+
+    // Handle different response formats
+    const processedWebResults = webResults.organic_results || webResults.results || webResults.result || webResults.data || [];
+    const processedImageResults = imageResults.image_results || imageResults.images || imageResults.result || imageResults.data || [];
+
     res.json({
       query: validatedQuery,
-      webResults: webResults.organic_results || [],
-      imageResults: imageResults.image_results || [],
+      webResults: processedWebResults,
+      imageResults: processedImageResults,
       isConversational: false
     });
   } catch (error) {
     logger.error('Test search error:', error);
-    res.status(500).json({
-      error: error.message,
-      isConversational: false
-    });
+    
+    // Handle timeout specifically
+    if (error.message.includes('timed out')) {
+      res.status(408).json({
+        error: 'Search request timed out. Please try again with a different query.',
+        isConversational: false
+      });
+    } else {
+      res.status(500).json({
+        error: error.message,
+        isConversational: false
+      });
+    }
   }
 });
 

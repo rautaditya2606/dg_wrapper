@@ -10,6 +10,9 @@ export class RapidAPISearchClient {
         if (!params.q) {
             throw new Error('Query parameter "q" is required');
         }
+        
+        console.log('Searching web for:', params.q);
+        
         const options = {
             method: 'POST',
             url: this.baseUrl,
@@ -26,14 +29,24 @@ export class RapidAPISearchClient {
                 max_results: 20
             }
         };
-        const response = await axios(options);
-        return response.data;
+        
+        try {
+            const response = await axios(options);
+            console.log('Web search response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Web search error:', error.response?.data || error.message);
+            throw error;
+        }
     }
 
     async searchImages(params) {
         if (!params.q) {
             throw new Error('Query parameter "q" is required');
         }
+        
+        console.log('Searching images for:', params.q);
+        
         const options = {
             method: 'POST',
             url: this.baseUrl,
@@ -42,9 +55,23 @@ export class RapidAPISearchClient {
                 'x-rapidapi-host': 'google-api31.p.rapidapi.com',
                 'x-rapidapi-key': this.apiKey
             },
-            data: { query: params.q, type: 'images' }
+            data: {
+                text: params.q,
+                safesearch: 'off',
+                timelimit: '',
+                region: 'wt-wt',
+                max_results: 20,
+                type: 'images'
+            }
         };
-        const response = await axios(options);
-        return response.data;
+        
+        try {
+            const response = await axios(options);
+            console.log('Image search response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Image search error:', error.response?.data || error.message);
+            throw error;
+        }
     }
 }
