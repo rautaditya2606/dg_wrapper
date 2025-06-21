@@ -674,25 +674,67 @@ app.post("/test/search", async (req, res) => {
 
     const [webResults, imageResults] = await Promise.race([searchPromise, timeoutPromise]);
 
+    // Since we can't get actual images from RapidAPI, we'll use the web results as-is
+    // and rely on the frontend to generate previews using screenshot services
+    const enhancedWebResults = webResults.result || [];
+
     // Log the results for debugging
     logger.info({
       query: validatedQuery,
-      webResultsCount: webResults.organic_results?.length || webResults.results?.length || webResults.result?.length || 0,
-      imageResultsCount: imageResults.image_results?.length || imageResults.images?.length || imageResults.result?.length || 0,
+      webResultsCount: enhancedWebResults.length || 0,
+      imageResultsCount: imageResults.image_results?.length || 0,
       webResultsKeys: Object.keys(webResults || {}),
       imageResultsKeys: Object.keys(imageResults || {}),
-      webResultsSample: webResults?.organic_results?.[0] || webResults?.results?.[0] || webResults?.result?.[0] || 'No results',
+      webResultsSample: enhancedWebResults[0] || 'No results',
       imageResultsSample: imageResults?.image_results?.[0] || imageResults?.images?.[0] || imageResults?.result?.[0] || 'No results'
     }, 'Search results received');
 
     // Handle different response formats
-    const processedWebResults = webResults.organic_results || webResults.results || webResults.result || webResults.data || [];
+    const processedWebResults = enhancedWebResults || webResults.organic_results || webResults.results || webResults.result || webResults.data || [];
     const processedImageResults = imageResults.image_results || imageResults.images || imageResults.result || imageResults.data || [];
+
+    // Generate LLM response based on web search results
+    let llmResponse = "";
+    try {
+      // Create context from web search results
+      const searchContext = processedWebResults
+        .slice(0, 5) // Use top 5 results
+        .map(result => `${result.title}: ${result.body}`)
+        .join('\n\n');
+
+      const prompt = `Based on the following web search results, provide a comprehensive and helpful response to the user's query: "${validatedQuery}"
+
+Web Search Results:
+${searchContext}
+
+Please provide a well-structured response that:
+1. Directly answers the user's question
+2. Incorporates relevant information from the search results
+3. Is conversational and helpful
+4. Acknowledges the sources when appropriate
+
+Response:`;
+
+      const message = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        temperature: 0.7,
+        messages: [
+          { role: "user", content: prompt }
+        ]
+      });
+
+      llmResponse = message.content[0]?.text || "I found some information but couldn't generate a complete response.";
+    } catch (llmError) {
+      logger.error('Error generating LLM response:', llmError);
+      llmResponse = "I found web results for your query, but I couldn't generate a response based on them. Please check the search results in the panel.";
+    }
 
     res.json({
       query: validatedQuery,
       webResults: processedWebResults,
       imageResults: processedImageResults,
+      llmResponse: llmResponse,
       isConversational: false
     });
   } catch (error) {

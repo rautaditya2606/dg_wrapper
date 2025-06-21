@@ -832,8 +832,26 @@
               assistantMessage.textContent = data.message || "This appears to be a conversational query. Please use the main chat interface for better assistance.";
               messagesContainer.appendChild(assistantMessage);
             } else {
-              // Update web panel content and visibility - REMOVED
-              // All web panel logic removed since it's hidden
+              // For web search results, display the LLM response in chat panel
+              if (data.llmResponse) {
+                const assistantMessage = document.createElement("div");
+                assistantMessage.className = "message assistant";
+                // Parse markdown and set innerHTML for better formatting
+                assistantMessage.innerHTML = parseMarkdown(data.llmResponse);
+                messagesContainer.appendChild(assistantMessage);
+              } else if (data.webResults && data.webResults.length > 0) {
+                // Fallback: if no LLM response but we have web results
+                const assistantMessage = document.createElement("div");
+                assistantMessage.className = "message assistant";
+                assistantMessage.textContent = `I found ${data.webResults.length} web results for your query. You can view them in the panel on the right.`;
+                messagesContainer.appendChild(assistantMessage);
+              } else {
+                // No results found
+                const assistantMessage = document.createElement("div");
+                assistantMessage.className = "message assistant";
+                assistantMessage.textContent = "I couldn't find any relevant information for your query. Please try rephrasing your question.";
+                messagesContainer.appendChild(assistantMessage);
+              }
             }
 
             // Scroll chat to bottom
@@ -960,18 +978,30 @@
           if (results.organic_results?.length > 0) {
             html += '<div class="structured-web-results">';
             results.organic_results.forEach((result) => {
-              // Always try to get favicon for web results
+              // Try multiple approaches to get real images
               let imageHtml = '';
+              
+              // Approach 1: If result already has an image
               if (result.image) {
                 imageHtml = `<div class='search-result-image'><img src='${result.image}' alt='Result image' onerror="this.style.display='none'"></div>`;
-              } else if (result.link) {
+              } 
+              // Approach 2: Try to get image from the website's OpenGraph or meta tags
+              else if (result.link) {
                 try {
                   const url = new URL(result.link);
                   const domain = url.hostname;
-                  const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                  imageHtml = `<div class='search-result-image'><img src='${favicon}' alt='Favicon' onerror="this.style.display='none'"></div>`;
+                  
+                  // Try to get a preview image using a reliable service
+                  const previewImage = `https://image.thum.io/get/width/100/crop/100/${encodeURIComponent(result.link)}`;
+                  
+                  imageHtml = `
+                    <div class='search-result-image'>
+                      <img src='${previewImage}' alt='Preview' 
+                           onerror="this.parentElement.innerHTML='<div class=\\'search-result-image\\' style=\\'background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;\\'><i class=\\'fas fa-link\\' style=\\'color: white; font-size: 1.2rem;\\'></i></div>'">
+                    </div>`;
                 } catch (e) {
-                  // fallback: no image
+                  // fallback: show a gradient background with link icon
+                  imageHtml = `<div class='search-result-image' style='background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;'><i class='fas fa-link' style='color: white; font-size: 1.2rem;'></i></div>`;
                 }
               }
               
