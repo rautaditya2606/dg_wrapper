@@ -656,10 +656,21 @@
               Start a conversation or search to see web results here.
             </div>
           </div>
+          <div id="mockTerminalContainer" class="mock-terminal-container" style="display: none; margin-bottom: 1.5rem;">
+            <div class="mock-terminal-window">
+              <pre class="mock-terminal-shell-content" id="mockTerminalContent">
+<span class="prompt">user@websearch:<span class="tilde">~</span> <span class="dollar">$</span></span> <span class="shell-cmd">Processing: <b>${query.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b></span>
+              </pre>
+            </div>
+            <div class="terminal-footer">
+              <span class="mock-terminal-checklist" id="mockTerminalFooter">Fetching results...</span>
+            </div>
+          </div>
           <div id="customPanelBody" class="custom-panel-default-message" style="color: var(--text-dark); font-size: 1.08rem; text-align: center; margin-top: 2.5rem; display: none;">
             <i class="fa-solid fa-magnifying-glass" style="font-size: 2.2rem; color: var(--accent-blue); margin-bottom: 1rem;"></i>
             <div style="margin-top: 1rem;">Web search results will be displayed here.</div>
           </div>
+          <div id="customPanelResults"></div>
         </div>
       </div>
     </div>
@@ -739,6 +750,13 @@
           if (chatPanelPlaceholder && chatPanelPlaceholder.style.display !== 'none') {
             chatPanelPlaceholder.style.display = 'none';
           }
+          // Hide custom panel placeholder and body
+          if (customPanelPlaceholder && customPanelPlaceholder.style.display !== 'none') {
+            customPanelPlaceholder.style.display = 'none';
+          }
+          if (customPanelBody && customPanelBody.style.display !== 'none') {
+            customPanelBody.style.display = 'none';
+          }
 
           const query = queryInput.value.trim();
           if (!query) {
@@ -764,9 +782,19 @@
           `;
           // document.body.classList.add("has-search-results"); // Removed - web panel is hidden
 
-          // Check if query suggests web search
-          const webSearchKeywords = ["search", "find", "look up", "google", "what is", "how to", "show me"];
-          const isWebSearch = webSearchKeywords.some(keyword => query.toLowerCase().includes(keyword));
+          // Show mock terminal for any query
+          const mockTerminal = document.getElementById('mockTerminalContainer');
+          const mockTerminalContent = document.getElementById('mockTerminalContent');
+          const mockTerminalFooter = document.getElementById('mockTerminalFooter');
+          if (mockTerminal) {
+            mockTerminal.style.display = '';
+            if (mockTerminalContent) {
+              mockTerminalContent.innerHTML = `<span class="prompt">user@websearch:<span class="tilde">~</span> <span class="dollar">$</span></span> <span class="shell-cmd">Processing: <b>${query.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b></span>`;
+            }
+            if (mockTerminalFooter) {
+              mockTerminalFooter.textContent = 'Fetching results...';
+            }
+          }
 
           // Add user message
           const userMessage = document.createElement("div");
@@ -789,7 +817,7 @@
 
           // Show loading message based on query type
           loadingMessage.style.display = "block";
-          loadingMessage.textContent = isWebSearch ? "Searching on web..." : "Answering...";
+          loadingMessage.textContent = "Answering...";
 
           try {
             const response = await fetch("/test/search", {
@@ -810,7 +838,11 @@
 
             // Show web results in custom panel if present
             if (data.webResults && data.webResults.length > 0) {
-              customPanelBody.innerHTML = renderStructuredWebResults({
+              // Update terminal to show success
+              if (mockTerminal && mockTerminalFooter) {
+                mockTerminalFooter.textContent = 'Results loaded.';
+              }
+              customPanelResults.innerHTML = renderStructuredWebResults({
                 organic_results: data.webResults.map((result, idx) => {
                   // Get corresponding image result
                   const imageResult = data.imageResults && data.imageResults[idx];
@@ -831,12 +863,26 @@
                 image_results: data.imageResults || []
               });
             } else if (data.imageResults && data.imageResults.length > 0) {
-              customPanelBody.innerHTML = renderStructuredWebResults({
+              // Update terminal to show success
+              if (mockTerminal && mockTerminalFooter) {
+                mockTerminalFooter.textContent = 'Image results loaded.';
+              }
+              customPanelResults.innerHTML = renderStructuredWebResults({
                 organic_results: [],
                 image_results: data.imageResults
               });
-            } else if (isWebSearch) {
-              customPanelBody.innerHTML = `<p>No web results found</p>`;
+            } else if (data.webResults && data.webResults.length > 0) {
+              // Fallback: if no LLM response but we have web results
+              const assistantMessage = document.createElement("div");
+              assistantMessage.className = "message assistant";
+              assistantMessage.textContent = `I found ${data.webResults.length} web results for your query. You can view them in the panel on the right.`;
+              messagesContainer.appendChild(assistantMessage);
+            } else {
+              // No results found
+              const assistantMessage = document.createElement("div");
+              assistantMessage.className = "message assistant";
+              assistantMessage.textContent = "I couldn't find any relevant information for your query. Please try rephrasing your question.";
+              messagesContainer.appendChild(assistantMessage);
             }
 
             // Remove loading message from DOM
