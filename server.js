@@ -10,8 +10,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import rateLimit from 'express-rate-limit';
 import pino from 'pino';
 import HttpsProxyAgent from 'https-proxy-agent';
-import { chat, formatAIResponse } from './src/assistant.js';
-import { RapidAPISearchClient } from './src/search.js';
+import { WebSocketServer } from 'ws';
+import { chat, formatAIResponse, setBroadcastFunction } from './src/assistant.js';
+import { SearchClient } from './src/search.js';
 
 // Initialize dotenv
 dotenv.config();
@@ -95,6 +96,10 @@ app.get("/", (req, res) => {
   res.render("index", { result: null, query: null });
 });
 
+app.get("/terminal-demo", (req, res) => {
+  res.render("terminal-demo");
+});
+
 // Add retry utility function
 const withRetry = async (fn, retries = 5, backoff = (count) => Math.min(1000 * Math.pow(2, count), 10000)) => {
   for (let i = 0; i < retries; i++) {
@@ -127,7 +132,7 @@ const withRetry = async (fn, retries = 5, backoff = (count) => Math.min(1000 * M
 };
 
 // Initialize the search client
-const searchClient = new RapidAPISearchClient(process.env.RAPIDAPI_KEY);
+const searchClient = new SearchClient('9f86168378mshcc0a7c32818d149p12ff05jsnf6e51b7bfdbf', process.env.PEXELS_API_KEY);
 
 // Fix timeout issue in handleSerpApiRequest
 // Update handleSerpApiRequest to use SerpSearchClient methods
@@ -370,7 +375,7 @@ Ensure the response is valid JSON that exactly matches the specified structure.`
         result: {
           error: `Failed to display results: ${renderError.message}`,
           searchResults: textResults.organic_results?.slice(0, 3) || [],
-          images: searchResults.images_results?.slice(0, 4) || [],
+          images: searchResults.image_results?.slice(0, 3) || [],
         }
       });
     }
@@ -616,9 +621,6 @@ app.get("/test", (req, res) => {
   });
 });
 
-// Initialize the RapidAPI search client for /test
-const rapidApiSearchClient = new RapidAPISearchClient(process.env.RAPIDAPI_KEY);
-
 // Test search endpoint
 app.post("/test/search", async (req, res) => {
   const query = req.body.query;
@@ -661,102 +663,84 @@ app.post("/test/search", async (req, res) => {
       }
     }
 
-    // Use RapidAPI for web and image search with shorter timeout
+    // Use RapidAPI for web and Pexels for image search with shorter timeout
     const searchTimeout = 15000; // 15 seconds instead of 30
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error(`Search timed out after ${searchTimeout}ms`)), searchTimeout)
     );
 
-    const searchPromise = Promise.all([
-      rapidApiSearchClient.searchLocal({ q: validatedQuery }),
-      rapidApiSearchClient.searchImages({ q: validatedQuery })
+    const [webResults, imageResults] = await Promise.race([
+      Promise.all([
+        searchClient.searchLocal({ q: validatedQuery }),
+        searchClient.searchImages({ q: validatedQuery })
+      ]),
+      timeoutPromise
     ]);
 
-    const [webResults, imageResults] = await Promise.race([searchPromise, timeoutPromise]);
-
-    // Since we can't get actual images from RapidAPI, we'll use the web results as-is
-    // and rely on the frontend to generate previews using screenshot services
-    const enhancedWebResults = webResults.result || [];
-
-    // Log the results for debugging
-    logger.info({
-      query: validatedQuery,
-      webResultsCount: enhancedWebResults.length || 0,
-      imageResultsCount: imageResults.image_results?.length || 0,
-      webResultsKeys: Object.keys(webResults || {}),
-      imageResultsKeys: Object.keys(imageResults || {}),
-      webResultsSample: enhancedWebResults[0] || 'No results',
-      imageResultsSample: imageResults?.image_results?.[0] || imageResults?.images?.[0] || imageResults?.result?.[0] || 'No results'
-    }, 'Search results received');
-
-    // Handle different response formats
-    const processedWebResults = enhancedWebResults || webResults.organic_results || webResults.results || webResults.result || webResults.data || [];
-    const processedImageResults = imageResults.image_results || imageResults.images || imageResults.result || imageResults.data || [];
+    // imageResults is an object with image_results property (array)
+    const processedImageResults = imageResults.image_results || imageResults.result || [];
+    const processedWebResults = webResults.result || [];
 
     // Generate LLM response based on web search results
-    let llmResponse = "";
-    try {
-      // Create context from web search results
-      const searchContext = processedWebResults
-        .slice(0, 5) // Use top 5 results
-        .map(result => `${result.title}: ${result.body}`)
-        .join('\n\n');
+    let llmResponse = null;
+    if (processedWebResults.length > 0) {
+      try {
+        // Create context from web search results
+        const contextPrompt = processedWebResults
+          .slice(0, 5) // Use top 5 results
+          .map(result => `Title: ${result.title}\nURL: ${result.href}\nSnippet: ${result.body}`)
+          .join('\n\n');
 
-      const prompt = `Based on the following web search results, provide a comprehensive and helpful response to the user's query: "${validatedQuery}"
+        // Generate LLM response using the context
+        const message = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          temperature: 0.7,
+          messages: [
+            {
+              role: "user",
+              content: `Based on the following web search results, please provide a comprehensive answer to the user's question: "${validatedQuery}"\n\nWeb Search Results:\n${contextPrompt}\n\nPlease provide a well-structured response that directly answers the user's question using the information from the search results.`
+            }
+          ]
+        });
 
-Web Search Results:
-${searchContext}
-
-Please provide a well-structured response that:
-1. Directly answers the user's question
-2. Incorporates relevant information from the search results
-3. Is conversational and helpful
-4. Acknowledges the sources when appropriate
-
-Response:`;
-
-      const message = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        temperature: 0.7,
-        messages: [
-          { role: "user", content: prompt }
-        ]
-      });
-
-      llmResponse = message.content[0]?.text || "I found some information but couldn't generate a complete response.";
-    } catch (llmError) {
-      logger.error('Error generating LLM response:', llmError);
-      llmResponse = "I found web results for your query, but I couldn't generate a response based on them. Please check the search results in the panel.";
+        llmResponse = message.content[0]?.text || "I found some information but couldn't generate a proper response.";
+      } catch (llmError) {
+        logger.error('Error generating LLM response from web results:', llmError);
+        llmResponse = `I found ${processedWebResults.length} web results for your query. You can view them in the panel on the right.`;
+      }
     }
 
     res.json({
-      query: validatedQuery,
       webResults: processedWebResults,
       imageResults: processedImageResults,
       llmResponse: llmResponse,
       isConversational: false
     });
   } catch (error) {
-    logger.error('Test search error:', error);
-    
-    // Handle timeout specifically
-    if (error.message.includes('timed out')) {
-      res.status(408).json({
-        error: 'Search request timed out. Please try again with a different query.',
-        isConversational: false
-      });
-    } else {
-      res.status(500).json({
-        error: error.message,
-        isConversational: false
-      });
-    }
+    logger.error('Error in /test/search:', error);
+    res.status(500).json({ error: error.message, isConversational: false });
   }
 });
 
 // Helper function to create template data based on complexity
 function createTemplateData(query, analysisData, textResults, searchResults, complexity) {
+  // Get web search results and image results
+  const webResults = textResults.organic_results?.slice(0, 6) || [];
+  const imageResults = searchResults.image_results?.slice(0, 6) || [];
+  
+  console.log('Debug - searchResults structure:', Object.keys(searchResults));
+  console.log('Debug - imageResults:', imageResults);
+  console.log('Debug - webResults:', webResults);
+  
+  // Combine web results with corresponding images
+  const searchResultsWithImages = webResults.map((result, index) => ({
+    ...result,
+    images: imageResults[index] ? [imageResults[index]] : []
+  }));
+
+  console.log('Debug - searchResultsWithImages:', searchResultsWithImages.map(r => ({ title: r.title, hasImages: r.images.length > 0 })));
+
   const baseData = {
     query,
     result: {
@@ -766,8 +750,8 @@ function createTemplateData(query, analysisData, textResults, searchResults, com
         keyPoints: analysisData.keyPoints,
         analysis: analysisData.analysis
       },
-      searchResults: textResults.organic_results?.slice(0, 3) || [],
-      images: searchResults.images_results?.slice(0, 4) || [],
+      searchResults: searchResultsWithImages,
+      images: imageResults,
       complexity: complexity.level
     }
   };
@@ -882,8 +866,62 @@ async function callClaude(query, contextPrompt) {
   return message.content;
 }
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+// Create HTTP server
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocketServer({ server });
+
+// Store connected clients
+const clients = new Set();
+
+// WebSocket connection handler
+wss.on('connection', (ws) => {
+    console.log('New WebSocket client connected');
+    clients.add(ws);
+    
+    // Send initial connection message
+    ws.send(JSON.stringify({
+        type: 'connection',
+        message: 'Connected to backend terminal',
+        timestamp: new Date().toISOString()
+    }));
+    
+    ws.on('close', () => {
+        console.log('WebSocket client disconnected');
+        clients.delete(ws);
+    });
+    
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+        clients.delete(ws);
+    });
+});
+
+// Function to broadcast messages to all connected clients
+function broadcastToTerminal(data) {
+    const message = JSON.stringify({
+        ...data,
+        timestamp: new Date().toISOString()
+    });
+    
+    clients.forEach(client => {
+        if (client.readyState === 1) { // WebSocket.OPEN
+            try {
+                client.send(message);
+            } catch (error) {
+                console.error('Error sending message to client:', error);
+                clients.delete(client);
+            }
+        }
+    });
+}
+
+// Set the broadcast function in the assistant module
+setBroadcastFunction(broadcastToTerminal);
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
     console.log(`Server is running on http://localhost:${PORT}`);
 });

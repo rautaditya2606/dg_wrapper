@@ -595,13 +595,13 @@
         </div>
         <div class="messages-container">
           <div id="chatPanelPlaceholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 220px;">
-            <div class="custom-panel-animated-icon">
-              <span class="dot"></span>
-              <span class="dot"></span>
-              <span class="dot"></span>
-            </div>
-            <div style="margin-top: 2rem; color: var(--text-dark); font-size: 1.13rem; text-align: center; max-width: 320px;">
-              Start a conversation or search to see messages here.
+            <div class="welcome-circle"></div>
+            <h1 style="margin-bottom: 0.5rem; font-size: 2rem;">Search Analysis</h1>
+            <p style="color: #888; text-align: center; max-width: 320px; margin-bottom: 1.5rem;">Start a conversation or search to see messages here.</p>
+            <div class="pulse-circles">
+              <div class="pulse-circle"></div>
+              <div class="pulse-circle"></div>
+              <div class="pulse-circle"></div>
             </div>
           </div>
           <div id="loadingMessage" class="loading-message"></div>
@@ -799,16 +799,30 @@
             
             // DEBUG: Log the full response
             console.log('TEST SEARCH RESPONSE:', data);
+            console.log('🔍 DEBUG - imageResults[0]:', data.imageResults?.[0]);
+            console.log('🔍 DEBUG - imageResults[0].src:', data.imageResults?.[0]?.src);
+            console.log('🔍 DEBUG - imageResults[0].src keys:', data.imageResults?.[0]?.src ? Object.keys(data.imageResults[0].src) : 'no src');
 
             // Show web results in custom panel if present
             if (data.webResults && data.webResults.length > 0) {
               customPanelBody.innerHTML = renderStructuredWebResults({
-                organic_results: data.webResults.map(result => ({
-                  title: result.title,
-                  link: result.href,
-                  snippet: result.body,
-                  image: null // No image in web results, will use favicon
-                })),
+                organic_results: data.webResults.map((result, idx) => {
+                  // Get corresponding image result
+                  const imageResult = data.imageResults && data.imageResults[idx];
+                  let imageUrl = null;
+                  
+                  if (imageResult) {
+                    // Extract image URL from the nested src object
+                    imageUrl = imageResult.src?.thumbnail || imageResult.src?.medium || imageResult.src?.original || imageResult.thumbnail || imageResult.image || null;
+                  }
+                  
+                  return {
+                    title: result.title,
+                    link: result.href,
+                    snippet: result.body,
+                    image: imageUrl
+                  };
+                }),
                 image_results: data.imageResults || []
               });
             } else if (data.imageResults && data.imageResults.length > 0) {
@@ -887,6 +901,11 @@
         });
 
         function updateSearchResults(results) {
+          console.log('🔍 DEBUG - updateSearchResults called with:', results);
+          console.log('🔍 DEBUG - results.results length:', results.results?.length);
+          console.log('🔍 DEBUG - results.imageResults length:', results.imageResults?.length);
+          console.log('🔍 DEBUG - results.imageResults:', results.imageResults);
+          
           // Always show the web panel after a search
           document.body.classList.add('search-active');
           // Clear previous results
@@ -903,19 +922,38 @@
             const resultsList = document.createElement('div');
             resultsList.className = 'search-results-list';
             results.results.forEach((result, index) => {
-              const resultDiv = document.createElement('div');
-              resultDiv.className = 'search-result';
+              console.log(`🔍 DEBUG - Processing result ${index}:`, result);
+              console.log(`🔍 DEBUG - Checking imageResults[${index}]:`, results.imageResults?.[index]);
               
-              // Add image if available
+              const resultDiv = document.createElement('div');
+              resultDiv.className = 'search-result card';
+              
+              // Add image if available from imageResults
               let imageHtml = '';
-              if (result.image) {
-                imageHtml = `<div class="search-result-image"><img src="${result.image}" alt="Result image"></div>`;
+              if (results.imageResults && results.imageResults[index]) {
+                const imageResult = results.imageResults[index];
+                const imageSrc = imageResult.src?.thumbnail || imageResult.src?.medium || imageResult.src?.original || imageResult.thumbnail || imageResult.image || '';
+                if (imageSrc) {
+                  console.log(`🔍 DEBUG - Using image for result ${index}:`, imageSrc);
+                  imageHtml = `<div class="search-result-image"><img src="${imageSrc}" alt="Result image" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"></div>`;
+                } else if (result.href) {
+                  console.log(`🔍 DEBUG - Using favicon for result ${index}`);
+                  try {
+                    const url = new URL(result.href);
+                    const domain = url.hostname;
+                    const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                    imageHtml = `<div class="search-result-image"><img src="${favicon}" alt="Favicon" style="width: 32px; height: 32px; object-fit: contain;"></div>`;
+                  } catch (e) {
+                    // fallback: no image
+                  }
+                }
               } else if (result.href) {
+                console.log(`🔍 DEBUG - Using favicon for result ${index}`);
                 try {
                   const url = new URL(result.href);
                   const domain = url.hostname;
                   const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                  imageHtml = `<div class="search-result-image"><img src="${favicon}" alt="Favicon"></div>`;
+                  imageHtml = `<div class="search-result-image"><img src="${favicon}" alt="Favicon" style="width: 32px; height: 32px; object-fit: contain;"></div>`;
                 } catch (e) {
                   // fallback: no image
                 }
@@ -953,9 +991,10 @@
             results.images_results.forEach((img) => {
               const imageDiv = document.createElement('div');
               imageDiv.className = 'image-result';
+              const imageSrc = img.src?.thumbnail || img.src?.medium || img.src?.original || img.thumbnail || img.image || img.src || '';
               imageDiv.innerHTML = `
                 <a href="${img.href || img.link || '#'}" target="_blank" rel="noopener noreferrer">
-                  <img src="${img.thumbnail || img.image || img.src || ''}" alt="Image result" />
+                  <img src="${imageSrc}" alt="Image result" />
                 </a>
               `;
               imageResultsContainer.appendChild(imageDiv);
@@ -974,33 +1013,29 @@
 
         // Render structured web results in the custom panel
         function renderStructuredWebResults(results) {
+          console.log('🔍 DEBUG - renderStructuredWebResults called with:', results);
+          console.log('🔍 DEBUG - organic_results length:', results.organic_results?.length);
+          console.log('🔍 DEBUG - image_results length:', results.image_results?.length);
+          console.log('🔍 DEBUG - image_results:', results.image_results);
+          
           let html = '';
           if (results.organic_results?.length > 0) {
             html += '<div class="structured-web-results">';
-            results.organic_results.forEach((result) => {
-              // Use favicon for all results
-              let faviconHtml = '';
-              if (result.link) {
-                try {
-                  const url = new URL(result.link);
-                  const domain = url.hostname;
-                  const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                  faviconHtml = `<div class='search-result-image'><img src='${favicon}' alt='Favicon' style='width: 32px; height: 32px; object-fit: contain;'></div>`;
-                } catch (e) {
-                  // fallback: show a gradient background with link icon
-                  faviconHtml = `<div class='search-result-image' style='background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;'><i class='fas fa-link' style='color: white; font-size: 1.2rem;'></i></div>`;
+            results.organic_results.forEach((result, index) => {
+              // Only use image_results images for thumbnails
+              let imageHtml = '';
+              const imageResult = results.image_results && results.image_results[index];
+              if (imageResult) {
+                const imageSrc = imageResult.src?.thumbnail || imageResult.src?.medium || imageResult.src?.original || imageResult.thumbnail || imageResult.image || imageResult.src || '';
+                if (imageSrc) {
+                  imageHtml = `<div class='search-result-image'><img src='${imageSrc}' alt='Result image' style='width: 100%; height: 120px; object-fit: cover; border-radius: 8px;'></div>`;
                 }
-              } else {
-                // fallback: show a gradient background with link icon
-                faviconHtml = `<div class='search-result-image' style='background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;'><i class='fas fa-link' style='color: white; font-size: 1.2rem;'></i></div>`;
               }
-              
-              // Ensure link is valid
+              // No favicon or fallback at all
               const validLink = result.link && result.link.startsWith('http') ? result.link : '#';
-              
               html += `
                 <div class="search-result card">
-                  ${faviconHtml}
+                  ${imageHtml}
                   <div class="search-result-content">
                     <h3 class="result-title">
                       <a href="${validLink}" target="_blank" rel="noopener noreferrer">
@@ -1022,7 +1057,8 @@
             html += '<h3 style="color: var(--text-light); margin-bottom: 1rem;">Image Results</h3>';
             results.image_results.forEach((img) => {
               const validLink = img.link && img.link.startsWith('http') ? img.link : '#';
-              const imageSrc = img.thumbnail || img.image || img.src || '';
+              // Access the nested src object properly
+              const imageSrc = img.src?.thumbnail || img.src?.medium || img.src?.original || img.thumbnail || img.image || img.src || '';
               html += `
                 <div class="image-result">
                   <a href="${validLink}" target="_blank" rel="noopener noreferrer">

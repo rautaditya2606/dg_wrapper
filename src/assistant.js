@@ -11,6 +11,7 @@
     import axios from 'axios';
     import * as cheerio from 'cheerio';
     import { EventEmitter } from 'events';
+    import { SearchClient } from './search.js';
 
     // Helper function to get current date
     const getCurrentDate = () => {
@@ -24,6 +25,24 @@
 
     // Create event emitter for web activities
     const webActivityEmitter = new EventEmitter();
+
+    // Global function to broadcast to terminal (will be set by server)
+    let broadcastToTerminal = null;
+
+    // Function to set the broadcast function from server
+    export function setBroadcastFunction(broadcastFn) {
+        broadcastToTerminal = broadcastFn;
+    }
+
+    // Helper function to send activity to terminal
+    function sendToTerminal(activity) {
+        if (broadcastToTerminal) {
+            broadcastToTerminal({
+                type: 'backend_activity',
+                activity: activity
+            });
+        }
+    }
 
     // Helper function to get webpage metadata
     async function getPageMetadata(url) {
@@ -58,11 +77,13 @@
 
         async _call(url) {
             try {
-                webActivityEmitter.emit('activity', {
+                const startActivity = {
                     type: 'fetch',
                     status: 'started',
                     url
-                });
+                };
+                webActivityEmitter.emit('activity', startActivity);
+                sendToTerminal(startActivity);
 
                 const [response, metadata] = await Promise.all([
                     axios.get(url, {
@@ -85,24 +106,28 @@
                     .trim()
                     .slice(0, 8000);
 
-                webActivityEmitter.emit('activity', {
+                const successActivity = {
                     type: 'fetch',
                     status: 'success',
                     url,
                     title: metadata.title,
                     thumbnail: metadata.thumbnail,
                     content: text.slice(0, 300) + '...'
-                });
+                };
+                webActivityEmitter.emit('activity', successActivity);
+                sendToTerminal(successActivity);
                 
                 return `Page Title: ${metadata.title}\n\n${text}`;
             } catch (error) {
                 console.error(`Web page fetch failed: ${error.message}`);
-                webActivityEmitter.emit('activity', {
+                const errorActivity = {
                     type: 'fetch',
                     status: 'error',
                     url,
                     error: error.message
-                });
+                };
+                webActivityEmitter.emit('activity', errorActivity);
+                sendToTerminal(errorActivity);
                 return `Error fetching webpage: ${error.message}`;
             }
         }
@@ -126,14 +151,16 @@
                 }
                 
                 // Emit initial search activity
-                webActivityEmitter.emit('activity', {
+                const searchActivity = {
                     type: 'Web Search',
                     content: `Searching for: ${input}`,
                     metadata: {
                         query: input,
                         timestamp: new Date().toISOString()
                     }
-                });
+                };
+                webActivityEmitter.emit('activity', searchActivity);
+                sendToTerminal(searchActivity);
                 
                 // Add date filter if valid year found
                 let params = input;
@@ -163,7 +190,7 @@
                                 else if (itemYear === currentYear - 1) ageIndicator = '📅 ';
                             }
                             
-                            webActivityEmitter.emit('activity', {
+                            const resultActivity = {
                                 type: 'Search Result',
                                 content: `${ageIndicator}${item.title}\n${item.snippet || ''}`,
                                 metadata: {
@@ -171,7 +198,9 @@
                                     thumbnail: item.thumbnail,
                                     year: itemYear
                                 }
-                            });
+                            };
+                            webActivityEmitter.emit('activity', resultActivity);
+                            sendToTerminal(resultActivity);
                             
                             return `${ageIndicator}${item.title}\n${item.link}\n${item.snippet || ''}\n`;
                         })
@@ -180,7 +209,7 @@
                     return formattedResults;
                 }
                 
-                webActivityEmitter.emit('activity', {
+                const noResultsActivity = {
                     type: 'Web Search',
                     content: 'No results found for this query. Try rephrasing your search terms.',
                     metadata: {
@@ -188,17 +217,21 @@
                         timestamp: new Date().toISOString(),
                         status: 'no-results'
                     }
-                });
+                };
+                webActivityEmitter.emit('activity', noResultsActivity);
+                sendToTerminal(noResultsActivity);
                 
                 return "No relevant search results found for your query. Try adjusting your search terms or time period.";
             } catch (error) {
                 console.error(`SerpAPI search failed: ${error.message}`);
-                webActivityEmitter.emit('activity', {
+                const errorActivity = {
                     type: 'search',
                     status: 'error',
                     query: input,
                     error: error.message
-                });
+                };
+                webActivityEmitter.emit('activity', errorActivity);
+                sendToTerminal(errorActivity);
                 return `I encountered an error while searching: ${error.message}. Please try rephrasing your query.`;
             }
         }
@@ -208,35 +241,121 @@
     class TrackedWikipedia extends WikipediaQueryRun {
         async _call(input) {
             try {
-                webActivityEmitter.emit('activity', {
+                const startActivity = {
                     type: 'wikipedia',
                     status: 'started',
                     query: input
-                });
+                };
+                webActivityEmitter.emit('activity', startActivity);
+                sendToTerminal(startActivity);
                 
                 const result = await super._call(input);
                 
                 // Try to extract first image from Wikipedia result
                 const imageMatch = result.match(/https:\/\/[^\s]+\.(?:jpg|png|gif)/i);
                 
-                webActivityEmitter.emit('activity', {
+                const successActivity = {
                     type: 'wikipedia',
                     status: 'success',
                     query: input,
                     content: result.slice(0, 200) + '...',
                     thumbnail: imageMatch ? imageMatch[0] : null
-                });
+                };
+                webActivityEmitter.emit('activity', successActivity);
+                sendToTerminal(successActivity);
                 
                 return result;
             } catch (error) {
                 console.error(`Wikipedia query failed: ${error.message}`);
-                webActivityEmitter.emit('activity', {
+                const errorActivity = {
                     type: 'wikipedia',
                     status: 'error',
                     query: input,
                     error: error.message
-                });
+                };
+                webActivityEmitter.emit('activity', errorActivity);
+                sendToTerminal(errorActivity);
                 return `Wikipedia error: ${error.message}`;
+            }
+        }
+    }
+
+    // Image search tool with activity tracking
+    class TrackedImageSearch {
+        name = 'image_search';
+        description = 'Search for images related to a query. Use this when users ask for images, photos, pictures, or visual content.';
+
+        constructor() {
+            this.searchClient = new SearchClient(process.env.RAPIDAPI_KEY, process.env.PEXELS_API_KEY);
+        }
+
+        async _call(input) {
+            try {
+                const startActivity = {
+                    type: 'image_search',
+                    status: 'started',
+                    query: input
+                };
+                webActivityEmitter.emit('activity', startActivity);
+                sendToTerminal(startActivity);
+
+                const result = await this.searchClient.searchImages({ q: input, count: 8 });
+                
+                if (result.image_results && result.image_results.length > 0) {
+                    // Format results for display
+                    const formattedResults = result.image_results
+                        .slice(0, 6)
+                        .map((image, index) => {
+                            const imageActivity = {
+                                type: 'Image Result',
+                                content: `Image ${index + 1}: ${image.title || 'Untitled'}`,
+                                metadata: {
+                                    url: image.link,
+                                    thumbnail: image.thumbnail,
+                                    title: image.title || 'Untitled Image'
+                                }
+                            };
+                            webActivityEmitter.emit('activity', imageActivity);
+                            sendToTerminal(imageActivity);
+                            
+                            return `Image ${index + 1}: ${image.title || 'Untitled'}\nURL: ${image.link}\nThumbnail: ${image.thumbnail}\n`;
+                        })
+                        .join('\n');
+
+                    const successActivity = {
+                        type: 'image_search',
+                        status: 'success',
+                        query: input,
+                        content: `Found ${result.image_results.length} images for "${input}"`,
+                        images: result.image_results
+                    };
+                    webActivityEmitter.emit('activity', successActivity);
+                    sendToTerminal(successActivity);
+
+                    return `Found ${result.image_results.length} images for "${input}":\n\n${formattedResults}`;
+                } else {
+                    const noResultsActivity = {
+                        type: 'image_search',
+                        status: 'no-results',
+                        query: input,
+                        content: `No images found for "${input}"`
+                    };
+                    webActivityEmitter.emit('activity', noResultsActivity);
+                    sendToTerminal(noResultsActivity);
+
+                    return `No images found for "${input}". Try using different search terms.`;
+                }
+            } catch (error) {
+                console.error(`Image search failed: ${error.message}`);
+                const errorActivity = {
+                    type: 'image_search',
+                    status: 'error',
+                    query: input,
+                    error: error.message
+                };
+                webActivityEmitter.emit('activity', errorActivity);
+                sendToTerminal(errorActivity);
+                return `Image search error: ${error.message}`;
             }
         }
     }
@@ -261,9 +380,10 @@
     const serpapi = new TrackedSerpAPI(process.env.SERPAPI_API_KEY);
     const wikipedia = new TrackedWikipedia();
     const webPageTool = new WebPageTool();
+    const imageSearch = new TrackedImageSearch();
 
     // Create tools array with all capabilities
-    const tools = [serpapi, wikipedia, webPageTool];
+    const tools = [serpapi, wikipedia, webPageTool, imageSearch];
 
     // Create prompt template with memory and tools context
     const prompt = PromptTemplate.fromTemplate(`
@@ -271,9 +391,15 @@
     1. Web Search (for current information and news)
     2. Wikipedia (for detailed information about topics)
     3. Web Page Fetching (for reading specific web pages)
+    4. Image Search (for finding images related to a query)
 
     For queries about current information, resources, or anything that might need verification, always use the appropriate tools.
     When asked about "resources" or "searching", or when a specific year is mentioned, make sure to use the web search tools to find relevant information.
+
+    For image-related queries:
+    - Use the Image Search tool when users ask for images, photos, pictures, or visual content
+    - Examples: "show me images of cats", "find photos of Paris", "search for pictures of mountains"
+    - The tool will return image URLs and thumbnails that can be displayed
 
     Important date guidelines:
     - The current year is ${new Date().getFullYear()}
@@ -287,6 +413,11 @@
     3. Note publication dates and recency of information
     4. Identify authoritative sources (universities, research institutions, etc.)
     5. Include context about result freshness (e.g., recent vs. older findings)
+
+    When presenting image results:
+    1. Mention that images are available in the web panel
+    2. Provide context about the images found
+    3. Suggest alternative search terms if no images are found
 
     Previous conversation:
     {chat_history}
@@ -393,6 +524,7 @@
     1. Information Type:
     - Static/General Knowledge: Basic concepts, definitions, established facts, general principles
     - Dynamic/Current Information: News, recent developments, real-time data, current statistics
+    - Visual Content: Images, photos, pictures, visual representations
 
     2. Information Freshness:
     - Timeless: Information that doesn't change significantly over time
@@ -406,11 +538,17 @@
     - Self-contained: Can be answered with general knowledge
     - External Reference: Requires looking up specific facts, sources, or current data
 
+    5. Visual Content:
+    - Text-only: Can be answered with text
+    - Visual: Requires images, photos, or visual content
+
     Examples:
     - "What is machine learning?" -> static (basic concept, timeless knowledge)
     - "What are the latest developments in machine learning?" -> search (current information needed)
     - "How does a neural network work?" -> static (established technical concept)
     - "What are the current applications of neural networks?" -> search (current usage examples needed)
+    - "Show me images of cats" -> search (visual content needed)
+    - "Find photos of Paris" -> search (visual content needed)
 
     Based on the above analysis, determine if this query requires a web search.
     Reply with only one word - either "search" or "static".
@@ -448,7 +586,18 @@
             /place/i
         ];
 
-        return informationPatterns.some(pattern => pattern.test(query));
+        const imagePatterns = [
+            /image/i,
+            /photo/i,
+            /picture/i,
+            /show\s+me/i,
+            /visual/i,
+            /look\s+like/i,
+            /appearance/i
+        ];
+
+        return informationPatterns.some(pattern => pattern.test(query)) || 
+               imagePatterns.some(pattern => pattern.test(query));
     }
 
     // Main chat function that processes user input
@@ -527,9 +676,19 @@
                     activity => activity.type === 'Search Result'
                 );
 
+                // Check if we have image results
+                const hasImageResults = webActivities.some(
+                    activity => activity.type === 'Image Result'
+                );
+
                 // Add note about web panel if we have search results
                 if (hasSearchResults) {
                     response += '\n\nI\'ve included the search results in the panel to the right for your reference.';
+                }
+
+                // Add note about images if we have image results
+                if (hasImageResults) {
+                    response += '\n\nI\'ve found some images related to your query. You can view them in the web panel to the right.';
                 }
 
                 // Format the AI response for better readability

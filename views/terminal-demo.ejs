@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Demo - Backend Activities</title>
+    <link rel="stylesheet" href="/css/terminal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .demo-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .demo-header p {
+            margin: 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .demo-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .demo-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .demo-section h3 {
+            color: white;
+            margin: 0 0 15px 0;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .demo-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .demo-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .demo-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .demo-btn.primary {
+            background: #4ec9b0;
+            border-color: #4ec9b0;
+        }
+        
+        .demo-btn.primary:hover {
+            background: #3db8a0;
+        }
+        
+        .demo-btn.danger {
+            background: #f44747;
+            border-color: #f44747;
+        }
+        
+        .demo-btn.danger:hover {
+            background: #e03636;
+        }
+        
+        .demo-info {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .demo-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .demo-info li {
+            margin: 5px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.online {
+            background: #6a9955;
+            box-shadow: 0 0 6px rgba(106, 153, 85, 0.6);
+        }
+        
+        .status-indicator.offline {
+            background: #f44747;
+            box-shadow: 0 0 6px rgba(244, 71, 71, 0.6);
+        }
+        
+        .status-indicator.processing {
+            background: #ffbd2e;
+            box-shadow: 0 0 6px rgba(255, 189, 46, 0.6);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        @media (max-width: 768px) {
+            .demo-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1><i class="fas fa-terminal"></i> Backend Terminal Demo</h1>
+            <p>Real-time backend activities displayed in an interactive terminal</p>
+        </div>
+        
+        <div class="demo-content">
+            <div class="demo-section">
+                <h3>
+                    <i class="fas fa-cogs"></i>
+                    Terminal Controls
+                </h3>
+                <div class="demo-controls">
+                    <button class="demo-btn primary" onclick="simulateSearch()">
+                        <i class="fas fa-search"></i> Simulate Search
+                    </button>
+                    <button class="demo-btn" onclick="simulateWikipedia()">
+                        <i class="fab fa-wikipedia-w"></i> Wikipedia Query
+                    </button>
+                    <button class="demo-btn" onclick="simulateWebFetch()">
+                        <i class="fas fa-globe"></i> Web Fetch
+                    </button>
+                    <button class="demo-btn" onclick="clearTerminal()">
+                        <i class="fas fa-trash"></i> Clear Terminal
+                    </button>
+                    <button class="demo-btn danger" onclick="simulateError()">
+                        <i class="fas fa-exclamation-triangle"></i> Simulate Error
+                    </button>
+                </div>
+                <div class="demo-info">
+                    <p><strong>Available Commands:</strong></p>
+                    <ul>
+                        <li><code>help</code> - Show available commands</li>
+                        <li><code>status</code> - Show system status</li>
+                        <li><code>clear</code> - Clear terminal</li>
+                        <li><code>search &lt;query&gt;</code> - Perform web search</li>
+                        <li><code>reconnect</code> - Reconnect to backend</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h3>
+                    <i class="fas fa-info-circle"></i>
+                    Connection Status
+                </h3>
+                <div class="demo-info">
+                    <p>
+                        <span class="status-indicator" id="connection-status">●</span>
+                        <strong>WebSocket Status:</strong> <span id="connection-text">Connecting...</span>
+                    </p>
+                    <p><strong>Backend Services:</strong></p>
+                    <ul>
+                        <li><span class="status-indicator online"></span>SerpAPI Search</li>
+                        <li><span class="status-indicator online"></span>Wikipedia API</li>
+                        <li><span class="status-indicator online"></span>Web Scraping</li>
+                        <li><span class="status-indicator online"></span>AI Model (Claude 3)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Terminal Window -->
+        <div class="terminal-window" id="terminal-content">
+            <!-- Terminal content will be dynamically generated by terminal.js -->
+        </div>
+    </div>
+
+    <script src="/js/terminal.js"></script>
+    <script>
+        // Demo functions
+        function simulateSearch() {
+            if (window.terminal) {
+                const queries = [
+                    'latest AI developments 2024',
+                    'machine learning applications',
+                    'quantum computing news',
+                    'cybersecurity trends',
+                    'blockchain technology'
+                ];
+                const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+                window.terminal.addLine(`$ search ${randomQuery}`, 'command');
+                window.terminal.simulateSearchProcess(randomQuery);
+            }
+        }
+        
+        function simulateWikipedia() {
+            if (window.terminal) {
+                const topics = [
+                    'Artificial Intelligence',
+                    'Machine Learning',
+                    'Quantum Computing',
+                    'Blockchain',
+                    'Cybersecurity'
+                ];
+                const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+                window.terminal.addBackendActivity({
+                    type: 'wikipedia',
+                    status: 'started',
+                    query: randomTopic
+                });
+                
+                setTimeout(() => {
+                    window.terminal.addBackendActivity({
+                        type: 'wikipedia',
+                        status: 'success',
+                        query: randomTopic,
+                        content: `Retrieved information about ${randomTopic} from Wikipedia...`
+                    });
+                }, 2000);
+            }
+        }
+        
+        function simulateWebFetch() {
+            if (window.terminal) {
+                const urls = [
+                    'https://example.com',
+                    'https://github.com',
+                    'https://stackoverflow.com',
+                    'https://medium.com',
+                    'https://dev.to'
+                ];
+                const randomUrl = urls[Math.floor(Math.random() * urls.length)];
+                window.terminal.addBackendActivity({
+                    type: 'fetch',
+                    status: 'started',
+                    url: randomUrl
+                });
+                
+                setTimeout(() => {
+                    window.terminal.addBackendActivity({
+                        type: 'fetch',
+                        status: 'success',
+                        url: randomUrl,
+                        title: `Sample Page - ${randomUrl}`,
+                        content: 'Successfully fetched webpage content...'
+                    });
+                }, 1500);
+            }
+        }
+        
+        function clearTerminal() {
+            if (window.terminal) {
+                window.terminal.output.innerHTML = '';
+                window.terminal.addLine('Terminal cleared', 'info');
+                window.terminal.addPrompt();
+            }
+        }
+        
+        function simulateError() {
+            if (window.terminal) {
+                const errors = [
+                    'Network timeout',
+                    'API rate limit exceeded',
+                    'Invalid response format',
+                    'Connection refused',
+                    'DNS resolution failed'
+                ];
+                const randomError = errors[Math.floor(Math.random() * errors.length)];
+                window.terminal.addBackendActivity({
+                    type: 'search',
+                    status: 'error',
+                    query: 'test query',
+                    error: randomError
+                });
+            }
+        }
+        
+        // Update connection status
+        function updateConnectionStatus(isConnected) {
+            const statusElement = document.getElementById('connection-status');
+            const textElement = document.getElementById('connection-text');
+            
+            if (isConnected) {
+                statusElement.className = 'status-indicator online';
+                textElement.textContent = 'Connected';
+            } else {
+                statusElement.className = 'status-indicator offline';
+                textElement.textContent = 'Disconnected';
+            }
+        }
+        
+        // Override terminal connection status updates
+        const originalUpdateConnectionStatus = Terminal.prototype.updateConnectionStatus;
+        Terminal.prototype.updateConnectionStatus = function() {
+            originalUpdateConnectionStatus.call(this);
+            updateConnectionStatus(this.isConnected);
+        };
+    </script>
+</body>
+</html> 

@@ -139,9 +139,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (terminal) {
             const line = document.createElement('div');
             line.className = 'terminal-line' + (isCursor ? ' blink' : '');
-            line.textContent = text;
             terminal.appendChild(line);
             terminal.scrollTop = terminal.scrollHeight;
+            // Use typeWriter for typewriter effect
+            if (!isCursor) {
+                typeWriter(line, text, 15); // 15ms per character for a smooth effect
+            } else {
+                line.textContent = text;
+            }
         }
     }
 });
