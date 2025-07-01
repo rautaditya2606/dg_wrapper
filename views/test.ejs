@@ -1052,23 +1052,6 @@
             });
             html += '</div>';
           }
-          if (results.image_results?.length > 0) {
-            html += '<div class="image-results">';
-            html += '<h3 style="color: var(--text-light); margin-bottom: 1rem;">Image Results</h3>';
-            results.image_results.forEach((img) => {
-              const validLink = img.link && img.link.startsWith('http') ? img.link : '#';
-              // Access the nested src object properly
-              const imageSrc = img.src?.thumbnail || img.src?.medium || img.src?.original || img.thumbnail || img.image || img.src || '';
-              html += `
-                <div class="image-result">
-                  <a href="${validLink}" target="_blank" rel="noopener noreferrer">
-                    <img src="${imageSrc}" alt="Image result" onerror="this.style.display='none'" />
-                  </a>
-                </div>
-              `;
-            });
-            html += '</div>';
-          }
           if (!html) {
             html = '<p>No web results found</p>';
           }
@@ -1110,6 +1093,30 @@
         if (messagesContainer.querySelectorAll('.message').length > 0) {
           if (chatPanelPlaceholder) chatPanelPlaceholder.style.display = 'none';
         }
+
+        // Autofocus input bar when typing anywhere on the page
+        document.addEventListener('keydown', function(e) {
+          // Ignore if input, textarea, or contenteditable is already focused
+          const active = document.activeElement;
+          if (
+            active && (
+              active.tagName === 'INPUT' ||
+              active.tagName === 'TEXTAREA' ||
+              active.isContentEditable
+            )
+          ) {
+            return;
+          }
+          // Only focus for printable characters (ignore modifier keys, etc.)
+          if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const input = document.getElementById('queryInput');
+            if (input) {
+              input.focus();
+              // Optionally, append the character if input is empty
+              // But browsers will send the key to the input after focus
+            }
+          }
+        });
       });
     </script>
   </body>
