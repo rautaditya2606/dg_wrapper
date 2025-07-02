@@ -877,8 +877,8 @@
               assistantMessage.className = "message assistant";
               assistantMessage.textContent = `I found ${data.webResults.length} web results for your query. You can view them in the panel on the right.`;
               messagesContainer.appendChild(assistantMessage);
-            } else {
-              // No results found
+            } else if (!data.isConversational) {
+              // No results found and not conversational
               const assistantMessage = document.createElement("div");
               assistantMessage.className = "message assistant";
               assistantMessage.textContent = "I couldn't find any relevant information for your query. Please try rephrasing your question.";
@@ -910,8 +910,8 @@
                 assistantMessage.className = "message assistant";
                 assistantMessage.textContent = `I found ${data.webResults.length} web results for your query. You can view them in the panel on the right.`;
                 messagesContainer.appendChild(assistantMessage);
-              } else {
-                // No results found
+              } else if (!data.isConversational) {
+                // No results found and not conversational
                 const assistantMessage = document.createElement("div");
                 assistantMessage.className = "message assistant";
                 assistantMessage.textContent = "I couldn't find any relevant information for your query. Please try rephrasing your question.";
@@ -1009,165 +1009,28 @@
                   // fallback: no image
                 }
               }
-              
+
+              const resultContent = `
+                <div class="search-result-content">
+                  <div class="result-title">
+                    <a href="${result.href}" target="_blank" rel="noopener noreferrer">${result.title}</a>
+                  </div>
+                  <div class="result-snippet">${result.body}</div>
+                  <div class="result-url">${result.href}</div>
+                </div>
+              `;
+
               resultDiv.innerHTML = `
                 ${imageHtml}
-                <div class="search-result-content">
-                  <h3 class="result-title">
-                    <a href="${result.href || '#'}" target="_blank" rel="noopener noreferrer">
-                      ${result.title || 'No title'}
-                    </a>
-                  </h3>
-                  <p class="result-snippet">${result.body || result.description || 'No description'}</p>
-                  <div class="result-url">${result.href || 'No URL'}</div>
-                </div>
+                ${resultContent}
               `;
+
               resultsList.appendChild(resultDiv);
             });
+
             webResults.appendChild(resultsList);
           }
-
-          // Show image results if present
-          if (results.images_results?.length > 0) {
-            const imageResultsContainer = document.createElement('div');
-            imageResultsContainer.className = 'image-results';
-            imageResultsContainer.style.marginTop = '2rem';
-            
-            const imageHeader = document.createElement('h3');
-            imageHeader.textContent = 'Image Results';
-            imageHeader.style.marginBottom = '1rem';
-            imageHeader.style.color = 'var(--text-light)';
-            imageResultsContainer.appendChild(imageHeader);
-            
-            results.images_results.forEach((img) => {
-              const imageDiv = document.createElement('div');
-              imageDiv.className = 'image-result';
-              const imageSrc = img.src?.thumbnail || img.src?.medium || img.src?.original || img.thumbnail || img.image || img.src || '';
-              imageDiv.innerHTML = `
-                <a href="${img.href || img.link || '#'}" target="_blank" rel="noopener noreferrer">
-                  <img src="${imageSrc}" alt="Image result" />
-                </a>
-              `;
-              imageResultsContainer.appendChild(imageDiv);
-            });
-            webResults.appendChild(imageResultsContainer);
-          }
-
-          // Show explicit no results message if no results found
-          if ((!results.results || results.results.length === 0) && (!results.images_results || results.images_results.length === 0)) {
-            const noResults = document.createElement('div');
-            noResults.className = 'no-results';
-            noResults.innerHTML = '<i class="fas fa-search"></i><p>No web results found</p>';
-            webResults.appendChild(noResults);
-          }
         }
-
-        // Render structured web results in the custom panel
-        function renderStructuredWebResults(results) {
-          console.log('🔍 DEBUG - renderStructuredWebResults called with:', results);
-          console.log('🔍 DEBUG - organic_results length:', results.organic_results?.length);
-          console.log('🔍 DEBUG - image_results length:', results.image_results?.length);
-          console.log('🔍 DEBUG - image_results:', results.image_results);
-          
-          let html = '';
-          if (results.organic_results?.length > 0) {
-            html += '<div class="structured-web-results">';
-            results.organic_results.forEach((result, index) => {
-              // Only use image_results images for thumbnails
-              let imageHtml = '';
-              const imageResult = results.image_results && results.image_results[index];
-              if (imageResult) {
-                const imageSrc = imageResult.src?.thumbnail || imageResult.src?.medium || imageResult.src?.original || imageResult.thumbnail || imageResult.image || imageResult.src || '';
-                if (imageSrc) {
-                  imageHtml = `<div class='search-result-image'><img src='${imageSrc}' alt='Result image' style='width: 100%; height: 120px; object-fit: cover; border-radius: 8px;'></div>`;
-                }
-              }
-              // No favicon or fallback at all
-              const validLink = result.link && result.link.startsWith('http') ? result.link : '#';
-              html += `
-                <div class="search-result card">
-                  ${imageHtml}
-                  <div class="search-result-content">
-                    <h3 class="result-title">
-                      <a href="${validLink}" target="_blank" rel="noopener noreferrer">
-                        ${result.title || 'No title'}
-                      </a>
-                    </h3>
-                    <p class="result-snippet">${result.snippet || result.body || 'No description available'}</p>
-                    <div class="result-url" style="font-size: 0.8rem; color: var(--text-dark); margin-top: 0.5rem;">
-                      ${result.link || 'No URL'}
-                    </div>
-                  </div>
-                </div>
-              `;
-            });
-            html += '</div>';
-          }
-          if (!html) {
-            html = '<p>No web results found</p>';
-          }
-          return html;
-        }
-
-        // Toggle custom panel
-        customPanelToggle.addEventListener("click", () => {
-          const isOpen = customPanel.classList.contains("open");
-          if (isOpen) {
-            customPanel.classList.remove("open");
-            document.body.classList.remove("custom-panel-open");
-            document.body.classList.remove("show-panel-toggle");
-            customPanelToggleIcon.classList.remove("fa-xmark");
-            customPanelToggleIcon.classList.add("fa-bars");
-            customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
-          } else {
-            customPanel.classList.add("open");
-            document.body.classList.add("custom-panel-open");
-            document.body.classList.add("show-panel-toggle");
-            customPanelToggleIcon.classList.remove("fa-bars");
-            customPanelToggleIcon.classList.add("fa-xmark");
-            customPanelToggleIcon.setAttribute('aria-label', 'Close panel');
-          }
-        });
-
-        // Set initial icon state on load
-        if (customPanel.classList.contains("open")) {
-          customPanelToggleIcon.classList.remove("fa-bars");
-          customPanelToggleIcon.classList.add("fa-xmark");
-          customPanelToggleIcon.setAttribute('aria-label', 'Close panel');
-        } else {
-          customPanelToggleIcon.classList.remove("fa-xmark");
-          customPanelToggleIcon.classList.add("fa-bars");
-          customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
-        }
-
-        // Hide chat panel placeholder if there are already messages
-        if (messagesContainer.querySelectorAll('.message').length > 0) {
-          if (chatPanelPlaceholder) chatPanelPlaceholder.style.display = 'none';
-        }
-
-        // Autofocus input bar when typing anywhere on the page
-        document.addEventListener('keydown', function(e) {
-          // Ignore if input, textarea, or contenteditable is already focused
-          const active = document.activeElement;
-          if (
-            active && (
-              active.tagName === 'INPUT' ||
-              active.tagName === 'TEXTAREA' ||
-              active.isContentEditable
-            )
-          ) {
-            return;
-          }
-          // Only focus for printable characters (ignore modifier keys, etc.)
-          if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            const input = document.getElementById('queryInput');
-            if (input) {
-              input.focus();
-              // Optionally, append the character if input is empty
-              // But browsers will send the key to the input after focus
-            }
-          }
-        });
       });
     </script>
   </body>
