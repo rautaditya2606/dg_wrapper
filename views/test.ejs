@@ -677,6 +677,33 @@
     <!-- End of panel-container -->
 
     <script>
+      // Typewriter effect function (top-level, reusable)
+      function typewriterEffect(element, speed = 18) { // Faster speed
+        console.log('Typewriter effect called for:', element);
+        const html = element.innerHTML;
+        element.innerHTML = '';
+        let i = 0;
+        function type() {
+          if (i < html.length) {
+            // Handle HTML tags: print whole tag at once
+            if (html[i] === '<') {
+              const close = html.indexOf('>', i);
+              if (close !== -1) {
+                element.innerHTML += html.slice(i, close + 1);
+                i = close + 1;
+              } else {
+                element.innerHTML += html[i++];
+              }
+            } else {
+              element.innerHTML += html[i++];
+            }
+            setTimeout(type, speed);
+          }
+        }
+        type();
+        element.classList.add('typewriter-done');
+      }
+
       // Simple markdown parser for the client side
       function parseMarkdown(text) {
         // First, normalize line endings and remove excess whitespace
@@ -778,19 +805,13 @@
         const customPanelPlaceholder = document.getElementById("customPanelPlaceholder");
         const chatPanelPlaceholder = document.getElementById("chatPanelPlaceholder");
 
-        // Observer removed - web panel is hidden permanently
-        // const observer = new MutationObserver(() => {
-        //   const hasWebResults = webResults && webResults.querySelectorAll('.search-result').length > 0;
-        //   const hasImageResults = webResults && webResults.querySelectorAll('.image-result-item').length > 0;
-        //   if (hasWebResults || hasImageResults) {
-        //     document.body.classList.add('has-search-results');
-        //   } else {
-        //     document.body.classList.remove('has-search-results');
-        //   }
-        // });
-        // if (webResults) {
-        //   observer.observe(webResults, { childList: true, subtree: true });
-        // }
+        // Apply typewriter effect to all assistant messages on load (if not already animated)
+        document.querySelectorAll('.message.assistant').forEach(msg => {
+          if (!msg.classList.contains('typewriter-done')) {
+            console.log('Applying typewriter to:', msg);
+            typewriterEffect(msg);
+          }
+        });
 
         chatForm.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -991,6 +1012,9 @@
               assistantMessage.className = "message assistant";
               assistantMessage.textContent = data.message || "This appears to be a conversational query. Please use the main chat interface for better assistance.";
               messagesContainer.appendChild(assistantMessage);
+              // Typewriter effect for conversational assistant message
+              console.log('Applying typewriter to conversational assistant message:', assistantMessage);
+              typewriterEffect(assistantMessage);
             } else {
               // For web search results, display the LLM response in chat panel
               if (data.llmResponse) {
@@ -998,7 +1022,11 @@
                 assistantMessage.className = "message assistant";
                 // Parse markdown and set innerHTML for better formatting
                 assistantMessage.innerHTML = parseMarkdown(data.llmResponse);
+                assistantMessage.classList.add('typewriter-effect');
                 messagesContainer.appendChild(assistantMessage);
+                // Typewriter effect for assistant message
+                console.log('Applying typewriter to new assistant message:', assistantMessage);
+                typewriterEffect(assistantMessage);
               } else if (data.webResults && data.webResults.length > 0) {
                 // Fallback: if no LLM response but we have web results
                 const assistantMessage = document.createElement("div");
