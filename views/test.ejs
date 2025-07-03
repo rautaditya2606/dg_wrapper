@@ -1161,6 +1161,26 @@
             webResults.appendChild(resultsList);
             }
           }
+
+        // Add toggle logic for custom panel
+        if (customPanelToggle) {
+          customPanelToggle.addEventListener('click', () => {
+            const isOpen = customPanel.classList.toggle('open');
+            document.body.classList.toggle('custom-panel-open', isOpen);
+            // Optionally, change the icon
+            if (customPanelToggleIcon) {
+              if (isOpen) {
+                customPanelToggleIcon.classList.remove('fa-bars');
+                customPanelToggleIcon.classList.add('fa-xmark');
+                customPanelToggleIcon.setAttribute('aria-label', 'Close panel');
+              } else {
+                customPanelToggleIcon.classList.remove('fa-xmark');
+                customPanelToggleIcon.classList.add('fa-bars');
+                customPanelToggleIcon.setAttribute('aria-label', 'Open panel');
+              }
+            }
+          });
+        }
       });
     </script>
   </body>
