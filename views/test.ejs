@@ -678,7 +678,7 @@
 
     <script>
       // Typewriter effect function (top-level, reusable)
-      function typewriterEffect(element, speed = 18) { // Faster speed
+      function typewriterEffect(element, speed = 8) { // Faster speed
         console.log('Typewriter effect called for:', element);
         const html = element.innerHTML;
         element.innerHTML = '';
@@ -934,6 +934,15 @@
 
             const data = await response.json();
 
+            // Set loading message based on query type
+            if (typeof data.isConversational !== 'undefined') {
+              if (data.isConversational) {
+                loadingMessage.textContent = 'Answering...';
+              } else {
+                loadingMessage.textContent = 'Searching on web...';
+              }
+            }
+
             // Step 6: Generating LLM response
             if (mockTerminalContent) {
               mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
@@ -977,6 +986,16 @@
                   };
                 }),
                 image_results: data.imageResults || []
+              });
+
+              // --- Add slide-in animation to each card with stagger ---
+              const cards = customPanelResults.querySelectorAll('.search-result.card');
+              cards.forEach((card, i) => {
+                card.style.opacity = '0';
+                setTimeout(() => {
+                  card.classList.add('slide-in-right');
+                  card.style.opacity = '';
+                }, i * 120); // 120ms stagger per card
               });
             } else if (data.imageResults && data.imageResults.length > 0) {
               // Update terminal to show success

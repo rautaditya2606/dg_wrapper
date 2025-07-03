@@ -284,4 +284,20 @@ body {
     .container {
         padding: 10px;
     }
+}
+
+/* --- Slide-in from right animation for search result cards --- */
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(80px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.search-result.card.slide-in-right {
+  animation: slideInRight 0.7s cubic-bezier(0.23, 1, 0.32, 1) both;
 } 
