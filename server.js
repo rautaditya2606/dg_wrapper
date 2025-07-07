@@ -48,6 +48,8 @@ const log = logger;  // Create an alias for consistency
 // Add API key validation logging
 console.log('API Key format check:', process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-'));
 console.log('API Key length:', process.env.ANTHROPIC_API_KEY?.length);
+console.log('RapidAPI Key available:', !!process.env.RAPIDAPI_KEY);
+console.log('Pexels API Key available:', !!process.env.PEXELS_API_KEY);
 
 const app = express();
 const anthropic = new Anthropic({
@@ -132,7 +134,7 @@ const withRetry = async (fn, retries = 5, backoff = (count) => Math.min(1000 * M
 };
 
 // Initialize the search client
-const searchClient = new SearchClient('9f86168378mshcc0a7c32818d149p12ff05jsnf6e51b7bfdbf', process.env.PEXELS_API_KEY);
+const searchClient = new SearchClient(process.env.SERPER_API_KEY, process.env.RAPIDAPI_KEY, process.env.PEXELS_API_KEY);
 
 // Fix timeout issue in handleSerpApiRequest
 // Update handleSerpApiRequest to use SerpSearchClient methods
@@ -669,17 +671,45 @@ app.post("/test/search", async (req, res) => {
       setTimeout(() => reject(new Error(`Search timed out after ${searchTimeout}ms`)), searchTimeout)
     );
 
-    const [webResults, imageResults] = await Promise.race([
-      Promise.all([
-        searchClient.searchLocal({ q: validatedQuery }),
-        searchClient.searchImages({ q: validatedQuery })
-      ]),
-      timeoutPromise
-    ]);
+    let webResults, imageResults;
+    try {
+      [webResults, imageResults] = await Promise.race([
+        Promise.all([
+          searchClient.searchLocal({ q: validatedQuery }).catch(error => {
+            logger.error('Web search failed:', { error: error.message, stack: error.stack });
+            throw error;
+          }),
+          searchClient.searchImages({ q: validatedQuery }).catch(error => {
+            logger.error('Image search failed:', { error: error.message, stack: error.stack });
+            throw error;
+          })
+        ]),
+        timeoutPromise
+      ]);
+    } catch (searchError) {
+      logger.error('Search operation failed:', { 
+        error: searchError.message, 
+        stack: searchError.stack,
+        query: validatedQuery 
+      });
+      throw searchError;
+    }
 
     // imageResults is an object with image_results property (array)
     const processedImageResults = imageResults.image_results || imageResults.result || [];
-    const processedWebResults = webResults.result || [];
+    // Map Serper API's 'organic' results to the expected format
+    let processedWebResults = [];
+    if (webResults.result && Array.isArray(webResults.result)) {
+      processedWebResults = webResults.result;
+    } else if (webResults.organic && Array.isArray(webResults.organic)) {
+      processedWebResults = webResults.organic.map(r => ({
+        title: r.title,
+        href: r.link,
+        body: r.snippet
+      }));
+    } else {
+      processedWebResults = [];
+    }
 
     // Generate LLM response based on web search results
     let llmResponse = null;

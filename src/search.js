@@ -1,10 +1,11 @@
 import axios from 'axios';
 
 export class SearchClient {
-    constructor(rapidApiKey, pexelsApiKey) {
+    constructor(serperApiKey, rapidApiKey, pexelsApiKey) {
+        this.serperApiKey = serperApiKey;
         this.rapidApiKey = rapidApiKey;
         this.pexelsApiKey = pexelsApiKey;
-        this.rapidApiBaseUrl = 'https://google-api31.p.rapidapi.com/websearch';
+        this.webApiBaseUrl = 'https://google.serper.dev/search';
         this.googleImagesApiUrl = 'https://google-images4.p.rapidapi.com/getGoogleImages';
     }
 
@@ -13,28 +14,40 @@ export class SearchClient {
             throw new Error('Query parameter "q" is required');
         }
         console.log('Searching web for:', params.q);
+        console.log('Using Serper API key:', this.serperApiKey ? `${this.serperApiKey.substring(0, 10)}...` : 'NOT SET');
+        
         const options = {
             method: 'POST',
-            url: this.rapidApiBaseUrl,
+            url: this.webApiBaseUrl,
             headers: {
                 'Content-Type': 'application/json',
-                'x-rapidapi-host': 'google-api31.p.rapidapi.com',
-                'x-rapidapi-key': this.rapidApiKey
+                'X-API-KEY': this.serperApiKey
             },
             data: {
-                text: params.q,
-                safesearch: 'off',
-                timelimit: '',
-                region: 'wt-wt',
-                max_results: 20
+                q: params.q
             }
         };
+        
+        console.log('Web search request options:', {
+            url: options.url,
+            method: options.method,
+            headers: options.headers,
+            data: options.data
+        });
+        
         try {
             const response = await axios(options);
-            console.log('Web search response:', response.data);
+            console.log('Web search response status:', response.status);
+            console.log('Web search response data:', response.data);
             return response.data;
         } catch (error) {
-            console.error('Web search error:', error.response?.data || error.message);
+            console.error('Web search error details:', {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                headers: error.response?.headers
+            });
             throw error;
         }
     }
