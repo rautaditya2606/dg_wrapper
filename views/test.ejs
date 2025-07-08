@@ -778,38 +778,56 @@
         return html;
       }
 
-      // Helper: Render images in groups of 2, one group at a time, covering full width
+      // Helper: Render images in groups of 2, one group at a time, stacked vertically, nearly full width
       async function showGroupedImagesFullWidth(imageResults, container, groupSize = 2, delay = 900) {
         container.innerHTML = '';
         if (!imageResults || imageResults.length === 0) return;
         let groupIndex = 0;
+        // Create a parent container for spacing
+        const parentDiv = document.createElement('div');
+        parentDiv.style.width = '100%';
+        parentDiv.style.padding = '18px 0 18px 0'; // Top and bottom spacing
+        parentDiv.style.display = 'flex';
+        parentDiv.style.justifyContent = 'center';
+        parentDiv.style.alignItems = 'center';
+        container.appendChild(parentDiv);
+        // The group div for the images
         const groupDiv = document.createElement('div');
-        groupDiv.style.width = '100%';
+        groupDiv.style.width = 'calc(100% - 15px)'; // 10-15px less than full width
+        groupDiv.style.margin = '0 auto';
         groupDiv.style.display = 'flex';
+        groupDiv.style.flexDirection = 'column';
         groupDiv.style.justifyContent = 'center';
         groupDiv.style.alignItems = 'center';
-        groupDiv.style.gap = '24px';
+        groupDiv.style.gap = '16px'; // Slightly more gap for visual balance
         groupDiv.style.transition = 'opacity 0.4s';
-        container.appendChild(groupDiv);
+        parentDiv.appendChild(groupDiv);
         while (groupIndex * groupSize < imageResults.length) {
           groupDiv.innerHTML = '';
           const group = imageResults.slice(groupIndex * groupSize, (groupIndex + 1) * groupSize);
           group.forEach((img) => {
             const imageSrc = img.src?.thumbnail || img.src?.medium || img.src?.original || img.thumbnail || img.image || img.src || '';
+            const imageUrl = img.href || img.link || imageSrc || '';
+            const displayUrl = imageUrl.length > 60 ? imageUrl.slice(0, 57) + '...' : imageUrl;
             const imageCard = document.createElement('div');
             imageCard.className = 'image-result';
-            imageCard.style.flex = '1 1 0';
-            imageCard.style.maxWidth = '48%';
+            imageCard.style.width = '100%';
             imageCard.style.margin = '0';
+            imageCard.style.padding = '0';
             imageCard.innerHTML = `
-              <a href="${img.href || img.link || '#'}" target="_blank" rel="noopener noreferrer">
-                <img src="${imageSrc}" alt="Image result" style="width:100%;height:260px;object-fit:cover;display:block;border-radius:12px;" />
+              <div style="background:rgba(30,30,30,0.92);color:#fff;font-size:0.93rem;padding:7px 14px 6px 14px;border-radius:10px 10px 0 0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:0;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <a href="${imageUrl}" target="_blank" rel="noopener noreferrer" style="color:#7ec3fa;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;">
+                  ${displayUrl}
+                </a>
+              </div>
+              <a href="${imageUrl}" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;padding:0;margin:0;">
+                <img src="${imageSrc}" alt="Image result" style="width:100%;height:320px;object-fit:cover;display:block;border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,0.10);margin:0;padding:0;" />
               </a>
             `;
             groupDiv.appendChild(imageCard);
           });
           groupDiv.style.opacity = '1';
-          await new Promise(res => setTimeout(res, delay));
+          await new Promise(res => setTimeout(res, 1500));
           groupIndex++;
         }
         // Fade out after last group
