@@ -802,6 +802,8 @@
         groupDiv.style.gap = '16px'; // Slightly more gap for visual balance
         groupDiv.style.transition = 'opacity 0.4s';
         parentDiv.appendChild(groupDiv);
+        // Collect promises for image loading
+        const imageLoadPromises = [];
         while (groupIndex * groupSize < imageResults.length) {
           groupDiv.innerHTML = '';
           const group = imageResults.slice(groupIndex * groupSize, (groupIndex + 1) * groupSize);
@@ -825,8 +827,22 @@
               </a>
             `;
             groupDiv.appendChild(imageCard);
+            // Wait for image to load
+            const imgTag = imageCard.querySelector('img');
+            if (imgTag) {
+              imageLoadPromises.push(new Promise((resolve) => {
+                if (imgTag.complete) {
+                  resolve();
+                } else {
+                  imgTag.onload = () => resolve();
+                  imgTag.onerror = () => resolve(); // resolve on error to avoid hanging
+                }
+              }));
+            }
           });
           groupDiv.style.opacity = '1';
+          // Wait for all images to load, then delay
+          await Promise.all(imageLoadPromises);
           await new Promise(res => setTimeout(res, 1500));
           groupIndex++;
         }
