@@ -1044,15 +1044,15 @@
             if (typeof data.isConversational !== 'undefined' && !data.isConversational) {
               // Hide tabs initially
               customPanelTabs.style.display = 'none';
-              tabWebResults.classList.add('active');
-              tabDeepAnswer.classList.remove('active');
+              tabWebResults.classList.remove('active');
+              tabDeepAnswer.classList.add('active');
               // 1. Show grouped images first (if any)
               if (data.imageResults && data.imageResults.length > 0) {
                 await showGroupedImagesFullWidth(data.imageResults, customPanelTabContent, 2, 900);
               }
-              // 2. After grouped images, show tabs and default to Web Results
+              // 2. After grouped images, show tabs and default to Deep Answer
               customPanelTabs.style.display = '';
-              await renderWebResultsTab();
+              renderDeepAnswerTab();
               // Tab switching logic
               tabWebResults.onclick = function() {
                 tabWebResults.classList.add('active');
@@ -1290,7 +1290,11 @@
         }
         // Helper to render deep answer tab
         function renderDeepAnswerTab() {
-          customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Analyzed answer</div>';
+          if (window.lastWebSearchData && window.lastWebSearchData.llmResponse) {
+            customPanelTabContent.innerHTML = `<div style='color:#fff;text-align:left;padding:2rem 0 0 0;font-size:1.08rem;'>${parseMarkdown(window.lastWebSearchData.llmResponse)}</div>`;
+          } else {
+            customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Analyzed answer not available.</div>';
+          }
         }
         // Store last web search data for tab switching
         window.lastWebSearchData = {};
