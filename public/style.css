@@ -347,6 +347,11 @@ body.loading .terminal-content {
     transform: translateY(0);
 }
 
+.input-group.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
 .result-container {
 	flex: 1;
 	overflow-y: auto;

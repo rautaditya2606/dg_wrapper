@@ -200,8 +200,9 @@
       }
 
       .tab.active {
-        background: var(--accent-blue);
+        border: 1px solid #fff;
         color: white;
+        background: transparent;
       }
 
       .tab:hover:not(.active) {
@@ -656,6 +657,13 @@
               Start a conversation or search to see web results here.
             </div>
           </div>
+          <div id="customPanelTabs" class="results-tabs" style="display:none;">
+            <button id="tabDeepAnswer" class="tab">Deep Answer</button>
+            <button id="tabWebResults" class="tab active">Web Results</button>
+          </div>
+          <div id="customPanelTabContent">
+            <!-- Tab content will be rendered here -->
+          </div>
           <div id="mockTerminalContainer" class="mock-terminal-container" style="display: none; margin-bottom: 1.5rem;">
             <div class="mock-terminal-window">
               <pre class="mock-terminal-shell-content" id="mockTerminalContent">
@@ -867,6 +875,10 @@
         const customPanelBody = document.getElementById("customPanelBody");
         const customPanelPlaceholder = document.getElementById("customPanelPlaceholder");
         const chatPanelPlaceholder = document.getElementById("chatPanelPlaceholder");
+        const customPanelTabs = document.getElementById("customPanelTabs");
+        const tabDeepAnswer = document.getElementById("tabDeepAnswer");
+        const tabWebResults = document.getElementById("tabWebResults");
+        const customPanelTabContent = document.getElementById("customPanelTabContent");
 
         // Apply typewriter effect to all assistant messages on load (if not already animated)
         document.querySelectorAll('.message.assistant').forEach(msg => {
@@ -883,6 +895,9 @@
           queryInput.disabled = true;
           const submitButton = chatForm.querySelector('button[type="submit"]');
           submitButton.disabled = true;
+          // Also add a class to visually indicate disabled state (optional)
+          const inputGroup = chatForm.querySelector('.input-group');
+          inputGroup.classList.add('disabled');
 
           // Hide chat panel placeholder immediately on first query
           if (chatPanelPlaceholder && chatPanelPlaceholder.style.display !== 'none') {
@@ -901,6 +916,7 @@
             // Re-enable form if query is empty
             queryInput.disabled = false;
             submitButton.disabled = false;
+            inputGroup.classList.remove('disabled');
             return;
           }
 
@@ -1025,66 +1041,32 @@
             console.log('🔍 DEBUG - imageResults[0].src keys:', data.imageResults?.[0]?.src ? Object.keys(data.imageResults[0].src) : 'no src');
 
             // Show web results in custom panel if present
-            if (data.webResults && data.webResults.length > 0) {
-              // Update terminal to show success
-              if (mockTerminal && mockTerminalFooter) {
-                mockTerminalFooter.textContent = 'Results loaded.';
-              }
-              // Wait a moment, then hide the terminal
-              await new Promise(res => setTimeout(res, 700));
-              if (mockTerminal) mockTerminal.style.display = 'none';
-              // 1. Show grouped images full width, one group at a time
+            if (typeof data.isConversational !== 'undefined' && !data.isConversational) {
+              // Hide tabs initially
+              customPanelTabs.style.display = 'none';
+              tabWebResults.classList.add('active');
+              tabDeepAnswer.classList.remove('active');
+              // 1. Show grouped images first (if any)
               if (data.imageResults && data.imageResults.length > 0) {
-                await showGroupedImagesFullWidth(data.imageResults, customPanelResults, 2, 900);
+                await showGroupedImagesFullWidth(data.imageResults, customPanelTabContent, 2, 900);
               }
-              // 2. After all images are shown, show web search cards with slide-in animation
-              const webCardsHtml = renderStructuredWebResults({
-                organic_results: data.webResults.map((result, idx) => {
-                  // Get corresponding image result
-                  const imageResult = data.imageResults && data.imageResults[idx];
-                  let imageUrl = null;
-                  if (imageResult) {
-                    imageUrl = imageResult.src?.thumbnail || imageResult.src?.medium || imageResult.src?.original || imageResult.thumbnail || imageResult.image || null;
-                  }
-                  return {
-                    title: result.title,
-                    link: result.href,
-                    snippet: result.body,
-                    image: imageUrl
-                  };
-                }),
-                image_results: data.imageResults || []
-              });
-              // Insert web cards (hidden initially)
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = webCardsHtml;
-              const cards = tempDiv.querySelectorAll('.search-result.card');
-              // Append to DOM (still hidden)
-              tempDiv.childNodes.forEach(node => customPanelResults.appendChild(node));
-              // Animate cards in sequence
-              cards.forEach((card, i) => {
-                setTimeout(() => {
-                  card.classList.add('slide-in-right');
-                  card.style.opacity = '';
-                }, i * 180);
-              });
-            } else if (data.imageResults && data.imageResults.length > 0) {
-              // Only images, no web results
-              await new Promise(res => setTimeout(res, 700));
-              if (mockTerminal) mockTerminal.style.display = 'none';
-              await showGroupedImagesFullWidth(data.imageResults, customPanelResults, 2, 900);
-            } else if (data.webResults && data.webResults.length > 0) {
-              // Fallback: if no LLM response but we have web results
-              const assistantMessage = document.createElement("div");
-              assistantMessage.className = "message assistant";
-              assistantMessage.textContent = `I found ${data.webResults.length} web results for your query. You can view them in the panel on the right.`;
-              messagesContainer.appendChild(assistantMessage);
-            } else if (!data.isConversational) {
-              // No results found and not conversational
-              const assistantMessage = document.createElement("div");
-              assistantMessage.className = "message assistant";
-              assistantMessage.textContent = "I couldn't find any relevant information for your query. Please try rephrasing your question.";
-              messagesContainer.appendChild(assistantMessage);
+              // 2. After grouped images, show tabs and default to Web Results
+              customPanelTabs.style.display = '';
+              await renderWebResultsTab();
+              // Tab switching logic
+              tabWebResults.onclick = function() {
+                tabWebResults.classList.add('active');
+                tabDeepAnswer.classList.remove('active');
+                renderWebResultsTab();
+              };
+              tabDeepAnswer.onclick = function() {
+                tabDeepAnswer.classList.add('active');
+                tabWebResults.classList.remove('active');
+                renderDeepAnswerTab();
+              };
+            } else {
+              customPanelTabs.style.display = 'none';
+              customPanelTabContent.innerHTML = '';
             }
 
             // Remove loading message from DOM
@@ -1145,6 +1127,7 @@
             // Re-enable form after successful response
             queryInput.disabled = false;
             submitButton.disabled = false;
+            inputGroup.classList.remove('disabled');
           } catch (error) {
             // On error, append error to mock terminal
             if (mockTerminalContent) {
@@ -1164,6 +1147,9 @@
             // Re-enable form after error
             queryInput.disabled = false;
             submitButton.disabled = false;
+            inputGroup.classList.remove('disabled');
+            customPanelTabs.style.display = 'none';
+            customPanelTabContent.innerHTML = '';
           }
         });
 
@@ -1267,6 +1253,60 @@
             }
           });
         }
+
+        // Helper to render web results tab (only cards, no grouped images)
+        function renderWebResultsTab() {
+          customPanelTabContent.innerHTML = '';
+          if (window.lastWebSearchData && window.lastWebSearchData.webResults && window.lastWebSearchData.webResults.length > 0) {
+            const webCardsHtml = renderStructuredWebResults({
+              organic_results: window.lastWebSearchData.webResults.map((result, idx) => {
+                const imageResult = window.lastWebSearchData.imageResults && window.lastWebSearchData.imageResults[idx];
+                let imageUrl = null;
+                if (imageResult) {
+                  imageUrl = imageResult.src?.thumbnail || imageResult.src?.medium || imageResult.src?.original || imageResult.thumbnail || imageResult.image || null;
+                }
+                // Map backend fields to frontend expected fields
+                return {
+                  title: result.title,
+                  link: result.href, // map 'href' to 'link'
+                  snippet: result.body, // map 'body' to 'snippet'
+                  image: imageUrl
+                };
+              }),
+              image_results: window.lastWebSearchData.imageResults || []
+            });
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = webCardsHtml;
+            // Animate cards in sequence (or just show them)
+            const cards = tempDiv.querySelectorAll('.search-result.card');
+            cards.forEach((card, i) => {
+              setTimeout(() => {
+                card.classList.add('slide-in-right');
+                card.style.opacity = '';
+              }, i * 120);
+            });
+            tempDiv.childNodes.forEach(node => customPanelTabContent.appendChild(node));
+          }
+        }
+        // Helper to render deep answer tab
+        function renderDeepAnswerTab() {
+          customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Analyzed answer</div>';
+        }
+        // Store last web search data for tab switching
+        window.lastWebSearchData = {};
+        // Patch: store data for tab switching
+        const origFetch = window.fetch;
+        window.fetch = async function(...args) {
+          const resp = await origFetch.apply(this, args);
+          if (args[0] === '/test/search') {
+            try {
+              const clone = resp.clone();
+              const data = await clone.json();
+              window.lastWebSearchData = data;
+            } catch (e) {}
+          }
+          return resp;
+        };
       });
     </script>
   </body>
