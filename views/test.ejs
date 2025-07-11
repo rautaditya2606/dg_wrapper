@@ -161,6 +161,7 @@
 
       .custom-panel-content {
         padding: 2rem 1.5rem;
+        padding-bottom: 120px; /* Add bottom padding to prevent content from being hidden behind progress bar */
         flex: 1;
         overflow-y: auto;
         height: 100%;
@@ -600,6 +601,12 @@
         margin: 16px 0;
         border: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: 0;
+        border-radius: 0 0 18px 18px;
       }
 
       .progress-bar-container.show {
@@ -657,27 +664,29 @@
 
       .progress-fill {
         height: 100%;
-        background: linear-gradient(90deg, var(--accent-blue), #64b5f6);
+        background: linear-gradient(90deg, 
+          transparent 0%, 
+          var(--accent-blue) 20%, 
+          var(--accent-blue) 80%, 
+          transparent 100%);
         border-radius: 3px;
-        width: 0%;
-        transition: width 0.3s ease;
+        width: 100%;
         position: relative;
+        animation: progressShimmer 2s ease-in-out infinite;
+        background-size: 200% 100%;
+      }
+
+      @keyframes progressShimmer {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
       }
 
       .progress-fill::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        animation: shimmer 2s infinite;
-      }
-
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
+        display: none;
       }
 
       .progress-steps {
@@ -750,6 +759,7 @@
       }
 
       .progress-status {
+        position: relative;
         font-size: 0.75rem;
         color: var(--text-dark);
         font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
@@ -758,6 +768,25 @@
         background: rgba(255, 255, 255, 0.03);
         border-radius: 4px;
         border-left: 2px solid var(--accent-blue);
+        overflow: hidden;
+      }
+      .progress-status-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 0%;
+        background: var(--accent-blue);
+        opacity: 0.18;
+        z-index: 0;
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 4px;
+        pointer-events: none;
+      }
+      .progress-status-content {
+        position: relative;
+        z-index: 1;
+        white-space: pre-line;
       }
 
       .progress-status.success {
@@ -838,52 +867,6 @@
               Start a conversation or search to see web results here.
             </div>
           </div>
-          <!-- Progress Bar Container -->
-          <div id="progressBarContainer" class="progress-bar-container">
-            <div class="progress-header">
-              <div class="progress-title">
-                <i class="fas fa-cogs"></i>
-                Processing Request
-              </div>
-              <div class="progress-percentage" id="progressPercentage">0%</div>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-steps" id="progressSteps">
-              <div class="progress-step" data-step="1">
-                <div class="progress-step-icon"></div>
-                <span>Validate</span>
-              </div>
-              <div class="progress-step" data-step="2">
-                <div class="progress-step-icon"></div>
-                <span>Check Search</span>
-              </div>
-              <div class="progress-step" data-step="3">
-                <div class="progress-step-icon"></div>
-                <span>LLM Decision</span>
-              </div>
-              <div class="progress-step" data-step="4">
-                <div class="progress-step-icon"></div>
-                <span>Web Search</span>
-              </div>
-              <div class="progress-step" data-step="5">
-                <div class="progress-step-icon"></div>
-                <span>Image Search</span>
-              </div>
-              <div class="progress-step" data-step="6">
-                <div class="progress-step-icon"></div>
-                <span>Generate Response</span>
-              </div>
-              <div class="progress-step" data-step="7">
-                <div class="progress-step-icon"></div>
-                <span>Send Response</span>
-              </div>
-            </div>
-            <div class="progress-status" id="progressStatus">
-              Initializing...
-            </div>
-          </div>
 
           <div id="customPanelTabs" class="results-tabs" style="display:none;">
             <button id="tabDeepAnswer" class="tab">Deep Answer</button>
@@ -907,6 +890,24 @@
             <div style="margin-top: 1rem;">Web search results will be displayed here.</div>
           </div>
           <div id="customPanelResults"></div>
+          
+          <!-- Progress Bar Container - Now at bottom -->
+          <div id="progressBarContainer" class="progress-bar-container">
+            <div class="progress-header">
+              <div class="progress-title">
+                <i class="fas fa-cogs"></i>
+                Processing Request
+              </div>
+              <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-status" id="progressStatus">
+              <div class="progress-status-fill" id="progressStatusFill"></div>
+              <span class="progress-status-content" id="progressStatusContent">Initializing...</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1118,43 +1119,59 @@
         // Progress bar control functions
         function showProgressBar() {
           progressBarContainer.classList.add('show');
-          progressFill.style.width = '0%';
-          progressPercentage.textContent = '0%';
-          progressStatus.textContent = 'Initializing...';
+          progressFill.style.width = '100%';
+          progressPercentage.textContent = 'Loading...';
+          // Only update the content span, not the whole progressStatus element
+          const statusContent = document.getElementById('progressStatusContent');
+          if (statusContent) statusContent.textContent = 'Initializing...';
           progressStatus.className = 'progress-status';
-          
-          // Reset all steps
-          document.querySelectorAll('.progress-step').forEach(step => {
-            step.classList.remove('active', 'completed');
-          });
         }
 
         function hideProgressBar() {
           progressBarContainer.classList.remove('show');
         }
 
+        function completeProgress() {
+          // Stop the shimmer animation and show completion
+          progressFill.style.animation = 'none';
+          progressFill.style.background = 'var(--accent-blue)';
+          progressFill.style.width = '100%';
+          progressPercentage.textContent = '100%';
+        }
+
         function updateProgress(step, percentage, status, isError = false) {
-          // Update progress bar
-          progressFill.style.width = `${percentage}%`;
-          progressPercentage.textContent = `${percentage}%`;
+          // Only update if progress bar is visible
+          if (!progressBarContainer.classList.contains('show')) {
+            return;
+          }
           
-          // Update status
-          progressStatus.textContent = status;
-          progressStatus.className = `progress-status ${isError ? 'error' : ''}`;
+          // Keep the loading animation running, just update status
+          progressPercentage.textContent = 'Loading...';
           
-          // Update steps
-          document.querySelectorAll('.progress-step').forEach((stepElement, index) => {
-            const stepNumber = index + 1;
-            if (stepNumber < step) {
-              stepElement.classList.add('completed');
-              stepElement.classList.remove('active');
-            } else if (stepNumber === step) {
-              stepElement.classList.add('active');
-              stepElement.classList.remove('completed');
-            } else {
-              stepElement.classList.remove('active', 'completed');
-            }
-          });
+          // Update status with step info
+          const stepNames = [
+            '',
+            'Validate',
+            'Check Search',
+            'LLM Decision',
+            'Web Search',
+            'Image Search',
+            'Generate Response',
+            'Send Response'
+          ];
+          let stepLabel = step >= 1 && step <= 7 ? stepNames[step] : '';
+          const statusText = `Step ${step} of 7: ${status}`;
+          
+          // Update the fill behind the status text with same smooth animation
+          const statusFill = document.getElementById('progressStatusFill');
+          if (statusFill) statusFill.style.width = `${percentage}%`;
+          
+          // Update the status text content
+          const statusContent = document.getElementById('progressStatusContent');
+          if (statusContent) statusContent.textContent = statusText;
+          
+          // Error styling
+          progressStatus.className = `progress-status${isError ? ' error' : ''}`;
         }
 
         // Apply typewriter effect to all assistant messages on load (if not already animated)
@@ -1273,14 +1290,14 @@
             if (mockTerminalContent) {
               mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Validating input...</span>\n`;
             }
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 800));
             
             // Step 2: Checking if web search is needed
             updateProgress(2, 20, 'Checking search need...');
             if (mockTerminalContent) {
               mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Checking if web search is needed...</span>\n`;
             }
-            await new Promise(resolve => setTimeout(resolve, 400));
+            await new Promise(resolve => setTimeout(resolve, 800));
             
             // Step 3: Calling LLM for decision
             updateProgress(3, 30, 'LLM decision...');
@@ -1316,28 +1333,39 @@
               if (mockTerminalContent) {
                 mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing web search (if needed)...</span>\n`;
               }
+              await new Promise(resolve => setTimeout(resolve, 800));
               
               // Step 5: Performing image search
               updateProgress(5, 60, 'Image search...');
               if (mockTerminalContent) {
                 mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing image search (if needed)...</span>\n`;
               }
+              await new Promise(resolve => setTimeout(resolve, 800));
 
               // Step 6: Generating LLM response
               updateProgress(6, 80, 'Generating response...');
               if (mockTerminalContent) {
                 mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
               }
+              await new Promise(resolve => setTimeout(resolve, 800));
               
               // Step 7: Sending response to user
               updateProgress(7, 90, 'Sending response...');
               if (mockTerminalContent) {
                 mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Sending response to user...</span>\n`;
               }
+              await new Promise(resolve => setTimeout(resolve, 800));
               
-              // Final success status
+              // Final success status - only reach 100% once
               updateProgress(7, 100, 'Completed successfully!', false);
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Complete the progress bar animation
+              completeProgress();
               await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Hide progress bar after completion
+              hideProgressBar();
             } else {
               // Hide progress bar for conversational queries
               hideProgressBar();
@@ -1363,8 +1391,7 @@
 
             // Handle response based on whether it's conversational or not
             if (typeof data.isConversational !== 'undefined' && !data.isConversational) {
-              // Hide progress bar and show results for non-conversational queries
-              hideProgressBar();
+              // Progress bar is already hidden, just show results for non-conversational queries
               
               // Hide tabs initially
               customPanelTabs.style.display = 'none';
@@ -1389,8 +1416,7 @@
                 renderDeepAnswerTab();
               };
             } else {
-              // For conversational queries, hide progress bar and show simple message
-              hideProgressBar();
+              // For conversational queries, progress bar is already hidden, show simple message
               customPanelTabs.style.display = 'none';
               customPanelTabContent.innerHTML = '';
             }
