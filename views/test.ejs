@@ -590,6 +590,187 @@
         30% { transform: translateY(-18px); opacity: 1; }
         60% { transform: translateY(0); opacity: 0.7; }
       }
+
+      /* Compact Progress Bar Styles */
+      .progress-bar-container {
+        display: none;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 16px 0;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+      }
+
+      .progress-bar-container.show {
+        display: block;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .progress-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .progress-title i {
+        color: var(--accent-blue);
+        font-size: 1rem;
+      }
+
+      .progress-percentage {
+        font-size: 0.8rem;
+        color: var(--text-dark);
+        font-weight: 500;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 8px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-blue), #64b5f6);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.3s ease;
+        position: relative;
+      }
+
+      .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: shimmer 2s infinite;
+      }
+
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+
+      .progress-steps {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .progress-steps::-webkit-scrollbar {
+        display: none;
+      }
+
+      .progress-step {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--text-dark);
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .progress-step.active {
+        color: var(--text-light);
+        font-weight: 500;
+      }
+
+      .progress-step.completed {
+        color: #4caf50;
+      }
+
+      .progress-step-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-dark);
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+      }
+
+      .progress-step.active .progress-step-icon {
+        background: var(--accent-blue);
+        color: white;
+      }
+
+      .progress-step.completed .progress-step-icon {
+        background: #4caf50;
+        color: white;
+      }
+
+      .progress-step.completed .progress-step-icon::before {
+        content: '✓';
+      }
+
+      .progress-step.active .progress-step-icon::before {
+        content: '●';
+      }
+
+      .progress-step:not(.active):not(.completed) .progress-step-icon::before {
+        content: '○';
+      }
+
+      .progress-status {
+        font-size: 0.75rem;
+        color: var(--text-dark);
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        margin-top: 4px;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 4px;
+        border-left: 2px solid var(--accent-blue);
+      }
+
+      .progress-status.success {
+        border-left-color: #4caf50;
+        color: #4caf50;
+      }
+
+      .progress-status.error {
+        border-left-color: #f44336;
+        color: #f44336;
+      }
+
+
     </style>
   </head>
   <body>
@@ -657,6 +838,53 @@
               Start a conversation or search to see web results here.
             </div>
           </div>
+          <!-- Progress Bar Container -->
+          <div id="progressBarContainer" class="progress-bar-container">
+            <div class="progress-header">
+              <div class="progress-title">
+                <i class="fas fa-cogs"></i>
+                Processing Request
+              </div>
+              <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-steps" id="progressSteps">
+              <div class="progress-step" data-step="1">
+                <div class="progress-step-icon"></div>
+                <span>Validate</span>
+              </div>
+              <div class="progress-step" data-step="2">
+                <div class="progress-step-icon"></div>
+                <span>Check Search</span>
+              </div>
+              <div class="progress-step" data-step="3">
+                <div class="progress-step-icon"></div>
+                <span>LLM Decision</span>
+              </div>
+              <div class="progress-step" data-step="4">
+                <div class="progress-step-icon"></div>
+                <span>Web Search</span>
+              </div>
+              <div class="progress-step" data-step="5">
+                <div class="progress-step-icon"></div>
+                <span>Image Search</span>
+              </div>
+              <div class="progress-step" data-step="6">
+                <div class="progress-step-icon"></div>
+                <span>Generate Response</span>
+              </div>
+              <div class="progress-step" data-step="7">
+                <div class="progress-step-icon"></div>
+                <span>Send Response</span>
+              </div>
+            </div>
+            <div class="progress-status" id="progressStatus">
+              Initializing...
+            </div>
+          </div>
+
           <div id="customPanelTabs" class="results-tabs" style="display:none;">
             <button id="tabDeepAnswer" class="tab">Deep Answer</button>
             <button id="tabWebResults" class="tab active">Web Results</button>
@@ -879,6 +1107,55 @@
         const tabDeepAnswer = document.getElementById("tabDeepAnswer");
         const tabWebResults = document.getElementById("tabWebResults");
         const customPanelTabContent = document.getElementById("customPanelTabContent");
+        
+        // Progress bar elements
+        const progressBarContainer = document.getElementById("progressBarContainer");
+        const progressFill = document.getElementById("progressFill");
+        const progressPercentage = document.getElementById("progressPercentage");
+        const progressSteps = document.getElementById("progressSteps");
+        const progressStatus = document.getElementById("progressStatus");
+
+        // Progress bar control functions
+        function showProgressBar() {
+          progressBarContainer.classList.add('show');
+          progressFill.style.width = '0%';
+          progressPercentage.textContent = '0%';
+          progressStatus.textContent = 'Initializing...';
+          progressStatus.className = 'progress-status';
+          
+          // Reset all steps
+          document.querySelectorAll('.progress-step').forEach(step => {
+            step.classList.remove('active', 'completed');
+          });
+        }
+
+        function hideProgressBar() {
+          progressBarContainer.classList.remove('show');
+        }
+
+        function updateProgress(step, percentage, status, isError = false) {
+          // Update progress bar
+          progressFill.style.width = `${percentage}%`;
+          progressPercentage.textContent = `${percentage}%`;
+          
+          // Update status
+          progressStatus.textContent = status;
+          progressStatus.className = `progress-status ${isError ? 'error' : ''}`;
+          
+          // Update steps
+          document.querySelectorAll('.progress-step').forEach((stepElement, index) => {
+            const stepNumber = index + 1;
+            if (stepNumber < step) {
+              stepElement.classList.add('completed');
+              stepElement.classList.remove('active');
+            } else if (stepNumber === step) {
+              stepElement.classList.add('active');
+              stepElement.classList.remove('completed');
+            } else {
+              stepElement.classList.remove('active', 'completed');
+            }
+          });
+        }
 
         // Apply typewriter effect to all assistant messages on load (if not already animated)
         document.querySelectorAll('.message.assistant').forEach(msg => {
@@ -985,15 +1262,32 @@
           loadingMessage.style.display = "block";
           loadingMessage.textContent = "Answering...";
 
+          // Hide existing content and show progress bar immediately
+          customPanelTabs.style.display = 'none';
+          customPanelTabContent.innerHTML = '';
+          showProgressBar();
+
           try {
+            // Step 1: Validating input
+            updateProgress(1, 10, 'Validating input...');
+            if (mockTerminalContent) {
+              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Validating input...</span>\n`;
+            }
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             // Step 2: Checking if web search is needed
+            updateProgress(2, 20, 'Checking search need...');
             if (mockTerminalContent) {
               mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Checking if web search is needed...</span>\n`;
             }
-            // Step 3: Calling Claude for decision
+            await new Promise(resolve => setTimeout(resolve, 400));
+            
+            // Step 3: Calling LLM for decision
+            updateProgress(3, 30, 'LLM decision...');
             if (mockTerminalContent) {
               mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Calling LLM for decision...</span>\n`;
             }
+            
             const response = await fetch("/test/search", {
               method: "POST",
               headers: {
@@ -1001,15 +1295,6 @@
               },
               body: JSON.stringify({ query }),
             });
-
-            // Step 4: Performing web search
-            if (mockTerminalContent) {
-              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing web search (if needed)...</span>\n`;
-            }
-            // Step 5: Performing image search
-            if (mockTerminalContent) {
-              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing image search (if needed)...</span>\n`;
-            }
 
             const data = await response.json();
 
@@ -1022,14 +1307,50 @@
               }
             }
 
-            // Step 6: Generating LLM response
-            if (mockTerminalContent) {
-              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
+            // Continue or hide progress bar based on query type
+            if (typeof data.isConversational !== 'undefined' && !data.isConversational) {
+              // Continue progress bar for non-conversational queries
+              
+              // Step 4: Performing web search
+              updateProgress(4, 40, 'Web search...');
+              if (mockTerminalContent) {
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing web search (if needed)...</span>\n`;
+              }
+              
+              // Step 5: Performing image search
+              updateProgress(5, 60, 'Image search...');
+              if (mockTerminalContent) {
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing image search (if needed)...</span>\n`;
+              }
+
+              // Step 6: Generating LLM response
+              updateProgress(6, 80, 'Generating response...');
+              if (mockTerminalContent) {
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
+              }
+              
+              // Step 7: Sending response to user
+              updateProgress(7, 90, 'Sending response...');
+              if (mockTerminalContent) {
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Sending response to user...</span>\n`;
+              }
+              
+              // Final success status
+              updateProgress(7, 100, 'Completed successfully!', false);
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } else {
+              // Hide progress bar for conversational queries
+              hideProgressBar();
+              
+              // For conversational queries, just show the terminal steps
+              if (mockTerminalContent) {
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing web search (if needed)...</span>\n`;
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Performing image search (if needed)...</span>\n`;
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
+                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Sending response to user...</span>\n`;
+              }
             }
-            // Step 7: Sending response to user
-            if (mockTerminalContent) {
-              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Sending response to user...</span>\n`;
-            }
+            
             if (mockTerminalFooter) {
               mockTerminalFooter.textContent = 'Results loaded.';
             }
@@ -1040,8 +1361,11 @@
             console.log('🔍 DEBUG - imageResults[0].src:', data.imageResults?.[0]?.src);
             console.log('🔍 DEBUG - imageResults[0].src keys:', data.imageResults?.[0]?.src ? Object.keys(data.imageResults[0].src) : 'no src');
 
-            // Show web results in custom panel if present
+            // Handle response based on whether it's conversational or not
             if (typeof data.isConversational !== 'undefined' && !data.isConversational) {
+              // Hide progress bar and show results for non-conversational queries
+              hideProgressBar();
+              
               // Hide tabs initially
               customPanelTabs.style.display = 'none';
               tabWebResults.classList.remove('active');
@@ -1065,6 +1389,8 @@
                 renderDeepAnswerTab();
               };
             } else {
+              // For conversational queries, hide progress bar and show simple message
+              hideProgressBar();
               customPanelTabs.style.display = 'none';
               customPanelTabContent.innerHTML = '';
             }
@@ -1129,6 +1455,11 @@
             submitButton.disabled = false;
             inputGroup.classList.remove('disabled');
           } catch (error) {
+            // Show error in progress bar (it's always shown initially)
+            updateProgress(7, 100, `Error: ${error.message.substring(0, 30)}${error.message.length > 30 ? '...' : ''}`, true);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            hideProgressBar();
+            
             // On error, append error to mock terminal
             if (mockTerminalContent) {
               mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\" style=\"color:red\">Error: ${error.message}</span>\n`;
@@ -1150,6 +1481,8 @@
             inputGroup.classList.remove('disabled');
             customPanelTabs.style.display = 'none';
             customPanelTabContent.innerHTML = '';
+            // Hide progress bar (it's always shown initially)
+            hideProgressBar();
           }
         });
 
