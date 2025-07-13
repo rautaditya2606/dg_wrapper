@@ -226,6 +226,23 @@
         max-width: 85%;
         font-size: 15px;
         line-height: 1.5;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+      
+      /* Analysis styling within messages */
+      .message .message-analysis {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      
+      .message .message-analysis * {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      
+      .message .task-item {
+        word-break: break-word;
       }
 
       .message.user {
@@ -496,6 +513,252 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
+      }
+
+      /* Analysis Response Styling */
+      .analysis-container {
+        padding: 1rem 0;
+      }
+
+      .analysis-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .analysis-summary h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .analysis-summary p {
+        margin: 0;
+        line-height: 1.6;
+        font-size: 1rem;
+      }
+
+      .key-points {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+      }
+
+      .key-points h4 {
+        margin: 0 0 0.75rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .key-points ul {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+
+      .key-points li {
+        margin: 0.5rem 0;
+        line-height: 1.5;
+      }
+
+      .tasks-section {
+        margin: 1.5rem 0;
+      }
+
+      .tasks-section h3 {
+        color: #fff;
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .task-card {
+        background: var(--surface-dark);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .task-card:hover {
+        border-color: var(--accent-blue);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      .task-header {
+        display: flex;
+        justify-content: between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+      }
+
+      .task-title {
+        color: #fff;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin: 0;
+        flex: 1;
+      }
+
+      .task-priority {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .task-priority.high {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+      }
+
+      .task-priority.medium {
+        background: linear-gradient(135deg, #feca57, #ff9ff3);
+        color: #2c3e50;
+      }
+
+      .task-priority.low {
+        background: linear-gradient(135deg, #48dbfb, #0abde3);
+        color: white;
+      }
+
+      .task-description {
+        color: var(--text-dark);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+      }
+
+      .task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .task-time {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-dark);
+        font-size: 0.9rem;
+      }
+
+      .task-time i {
+        color: var(--accent-blue);
+      }
+
+      .task-resources {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .task-resource {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-light);
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .task-status {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ffa726;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .task-status.completed {
+        background: #66bb6a;
+      }
+
+      .task-status.in-progress {
+        background: #42a5f5;
+      }
+
+      .recommendations-section {
+        margin: 1.5rem 0;
+      }
+
+      .recommendations-section h3 {
+        color: #fff;
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .recommendation-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 4px solid var(--accent-blue);
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-radius: 0 8px 8px 0;
+        transition: all 0.3s ease;
+      }
+
+      .recommendation-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateX(4px);
+      }
+
+      .context-section {
+        margin: 1.5rem 0;
+      }
+
+      .context-section h3 {
+        color: #fff;
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .context-item {
+        background: var(--surface-dark);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .context-item h4 {
+        color: var(--accent-blue);
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .context-item p {
+        color: var(--text-dark);
+        margin: 0;
+        line-height: 1.5;
+      }
+
+      .context-challenges {
+        margin-top: 0.5rem;
+      }
+
+      .context-challenges ul {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+
+      .context-challenges li {
+        color: var(--text-dark);
+        margin: 0.25rem 0;
       }
       .result-title {
         margin: 0 0 0.5rem 0;
@@ -799,6 +1062,373 @@
         color: #f44336;
       }
 
+      /* Compact Analysis Card Styles for Message Assistant */
+      .analysis-container.compact {
+        padding: 0.5rem 0;
+      }
+      .analysis-summary.compact {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.18);
+      }
+      .analysis-summary.compact h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .analysis-summary.compact p {
+        margin: 0;
+        line-height: 1.5;
+        font-size: 0.95rem;
+      }
+      .key-points.compact {
+        background: rgba(255,255,255,0.08);
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      .key-points.compact h4 {
+        margin: 0 0 0.4rem 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .key-points.compact ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      .key-points.compact li {
+        margin: 0.3rem 0;
+        line-height: 1.4;
+        font-size: 0.95rem;
+      }
+      .tasks-section.compact {
+        margin: 1rem 0;
+      }
+      .tasks-section.compact h4 {
+        color: #fff;
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .task-card.compact {
+        background: var(--surface-dark, #2d2d2d);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 0.7rem 1rem;
+        margin-bottom: 0.7rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        position: relative;
+      }
+      .task-header.compact {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.3rem;
+        gap: 0.5rem;
+      }
+      .task-title {
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.98rem;
+        flex: 1;
+      }
+      .task-priority.high {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+      }
+      .task-priority.medium {
+        background: linear-gradient(135deg, #feca57, #ff9ff3);
+        color: #2c3e50;
+      }
+      .task-priority.low {
+        background: linear-gradient(135deg, #48dbfb, #0abde3);
+        color: white;
+      }
+      .task-priority {
+        padding: 0.18rem 0.7rem;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+      .task-description {
+        color: #a0a0a0;
+        line-height: 1.5;
+        margin-bottom: 0.2rem;
+        font-size: 0.95rem;
+      }
+      .recommendations-section.compact {
+        margin: 1rem 0;
+      }
+      .recommendations-section.compact h4 {
+        color: #fff;
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .recommendation-item.compact {
+        background: rgba(255,255,255,0.05);
+        border-left: 4px solid #667eea;
+        padding: 0.7rem 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0 7px 7px 0;
+        font-size: 0.95rem;
+        color: #e0e0e0;
+      }
+
+      .msg-analysis-modern {
+        background: #23242a;
+        border: 1.5px solid #353657;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(30,32,60,0.13);
+        margin: 1.2rem 0 0.5rem 0;
+        padding: 0.7rem 1.1rem 0.7rem 1.1rem;
+        font-size: 0.97rem;
+        color: #e0e0e0;
+      }
+      .msg-analysis-section {
+        margin-bottom: 0.7rem;
+      }
+      .msg-analysis-header {
+        font-weight: 600;
+        font-size: 0.98rem;
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.3rem;
+        padding-left: 0.5rem;
+        border-left: 4px solid #667eea;
+        letter-spacing: 0.01em;
+        gap: 0.4em;
+      }
+      .msg-analysis-header.summary { border-left-color: #764ba2; }
+      .msg-analysis-header.keypoints { border-left-color: #2196f3; }
+      .msg-analysis-header.tasks { border-left-color: #43e97b; }
+      .msg-analysis-header.recs { border-left-color: #ffb347; }
+      .msg-analysis-header .icon {
+        font-size: 1.05em;
+        margin-right: 0.3em;
+        opacity: 0.85;
+      }
+      .msg-analysis-summary {
+        font-size: 0.97rem;
+        color: #e0e0e0;
+        margin-bottom: 0.2rem;
+      }
+      .msg-analysis-keypoints {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .msg-analysis-keypoints li {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 0.3rem;
+        font-size: 0.96rem;
+      }
+      .kp-num {
+        display: inline-block;
+        min-width: 1.5em;
+        height: 1.5em;
+        background: #2196f3;
+        color: #fff;
+        border-radius: 50%;
+        text-align: center;
+        font-weight: 600;
+        margin-right: 0.6em;
+        font-size: 0.93em;
+        line-height: 1.5em;
+      }
+      .msg-analysis-tasks {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .msg-analysis-task {
+        background: #23243a;
+        border-radius: 7px;
+        padding: 0.5rem 0.8rem;
+        border-left: 5px solid #43e97b;
+        margin-bottom: 0.1rem;
+        box-shadow: 0 1px 4px rgba(67,233,123,0.07);
+      }
+      .msg-analysis-task.high { border-left-color: #ff6b6b; }
+      .msg-analysis-task.medium { border-left-color: #feca57; }
+      .msg-analysis-task.low { border-left-color: #48dbfb; }
+      .task-title {
+        font-weight: 600;
+        color: #fff;
+        font-size: 0.97rem;
+        margin-bottom: 0.1rem;
+      }
+      .task-desc {
+        color: #b0b0b0;
+        font-size: 0.95rem;
+        margin-bottom: 0.1rem;
+      }
+      .msg-analysis-recommendations {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+      .msg-analysis-recommendation {
+        font-style: italic;
+        border-left: 4px solid #ffb347;
+        background: rgba(255,179,71,0.07);
+        color: #ffe6b3;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0 7px 7px 0;
+        font-size: 0.95rem;
+      }
+      .msg-analysis-more {
+        color: #aaa;
+        font-size: 0.85rem;
+        margin: 0.2rem 0 0 0.5rem;
+        font-style: italic;
+      }
+
+      .msg-analysis-modern.task-focused {
+        background: #22232a;
+        border: 1.5px solid #3a3b4d;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(30,32,60,0.10);
+        margin: 1.2rem 0 0.5rem 0;
+        padding: 0.7rem 1.1rem 0.7rem 1.1rem;
+        font-size: 0.97rem;
+        color: #e0e0e0;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-header {
+        font-weight: 700;
+        font-size: 1.01rem;
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.3rem;
+        padding-left: 0.5rem;
+        border-left: 4px solid #43e97b;
+        letter-spacing: 0.01em;
+        gap: 0.4em;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-header.recs { border-left-color: #ffb347; }
+      .msg-analysis-modern.task-focused .msg-analysis-header .icon {
+        font-size: 1.08em;
+        margin-right: 0.3em;
+        opacity: 0.85;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-summary {
+        font-size: 0.97rem;
+        color: #e0e0e0;
+        margin-bottom: 0.2rem;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-tasks {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-task {
+        background: #23243a;
+        border-radius: 7px;
+        padding: 0.6rem 1rem 0.6rem 0.9rem;
+        border-left: 5px solid #43e97b;
+        margin-bottom: 0.1rem;
+        box-shadow: 0 1px 4px rgba(67,233,123,0.07);
+        margin-top: 0.1rem;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-task.high { border-left-color: #ff6b6b; }
+      .msg-analysis-modern.task-focused .msg-analysis-task.medium { border-left-color: #feca57; }
+      .msg-analysis-modern.task-focused .msg-analysis-task.low { border-left-color: #48dbfb; }
+      .task-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.1rem;
+        gap: 0.5rem;
+      }
+      .task-title {
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.98rem;
+        flex: 1;
+      }
+      .task-priority {
+        padding: 0.18rem 0.7rem;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        background: #23242a;
+        border: 1.5px solid #444;
+        color: #fff;
+      }
+      .task-priority.high {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+        border: none;
+      }
+      .task-priority.medium {
+        background: linear-gradient(135deg, #feca57, #ff9ff3);
+        color: #2c3e50;
+        border: none;
+      }
+      .task-priority.low {
+        background: linear-gradient(135deg, #48dbfb, #0abde3);
+        color: white;
+        border: none;
+      }
+      .task-desc {
+        color: #b0b0b0;
+        font-size: 0.95rem;
+        margin-bottom: 0.1rem;
+      }
+      .task-meta {
+        display: flex;
+        gap: 0.7rem;
+        margin-top: 0.2rem;
+        font-size: 0.92rem;
+        color: #aaa;
+        align-items: center;
+      }
+      .task-time i {
+        color: #43e97b;
+        margin-right: 0.2em;
+      }
+      .task-resources {
+        display: flex;
+        gap: 0.3rem;
+      }
+      .task-resource {
+        background: rgba(67,233,123,0.13);
+        color: #43e97b;
+        padding: 0.13rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.85em;
+        border: 1px solid #43e97b33;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-recommendations {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-recommendation {
+        font-style: italic;
+        border-left: 4px solid #ffb347;
+        background: rgba(255,179,71,0.07);
+        color: #ffe6b3;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0 7px 7px 0;
+        font-size: 0.95rem;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-more {
+        color: #aaa;
+        font-size: 0.85rem;
+        margin: 0.2rem 0 0 0.5rem;
+        font-style: italic;
+      }
 
     </style>
   </head>
@@ -869,8 +1499,9 @@
           </div>
 
           <div id="customPanelTabs" class="results-tabs" style="display:none;">
+            <button id="tabAnalysis" class="tab active">Analysis</button>
             <button id="tabDeepAnswer" class="tab">Deep Answer</button>
-            <button id="tabWebResults" class="tab active">Web Results</button>
+            <button id="tabWebResults" class="tab">Web Results</button>
           </div>
           <div id="customPanelTabContent">
             <!-- Tab content will be rendered here -->
@@ -897,7 +1528,7 @@
               <div class="progress-title">
                 <i class="fas fa-cogs"></i>
                 Processing Request
-              </div>
+        </div>
               <div class="progress-percentage" id="progressPercentage">0%</div>
             </div>
             <div class="progress-bar">
@@ -1105,6 +1736,7 @@
         const customPanelPlaceholder = document.getElementById("customPanelPlaceholder");
         const chatPanelPlaceholder = document.getElementById("chatPanelPlaceholder");
         const customPanelTabs = document.getElementById("customPanelTabs");
+        const tabAnalysis = document.getElementById("tabAnalysis");
         const tabDeepAnswer = document.getElementById("tabDeepAnswer");
         const tabWebResults = document.getElementById("tabWebResults");
         const customPanelTabContent = document.getElementById("customPanelTabContent");
@@ -1181,6 +1813,60 @@
             typewriterEffect(msg);
           }
         });
+
+        // Render analysis within message
+        function renderAnalysisInMessage(analysis) {
+          let html = `<div class="msg-analysis-modern task-focused">`;
+          // Optional: Brief summary
+          if (analysis.summary) {
+            html += `
+              <div class="msg-analysis-section">
+                <div class="msg-analysis-header summary"><span class="icon">📝</span>Action Plan</div>
+                <div class="msg-analysis-summary">${analysis.summary}</div>
+              </div>
+            `;
+          }
+          // Tasks (main content)
+          if (analysis.tasks && analysis.tasks.length > 0) {
+            html += `
+              <div class="msg-analysis-section">
+                <div class="msg-analysis-tasks">
+                  ${analysis.tasks.map(task => `
+                    <div class="msg-analysis-task ${task.priority || 'medium'}">
+                      <div class="task-title-row">
+                        <span class="task-title">${task.title}</span>
+                        <span class="task-priority ${task.priority || 'medium'}">${task.priority ? task.priority.toUpperCase() : 'MEDIUM'}</span>
+                      </div>
+                      <div class="task-desc">${task.description}</div>
+                      ${(task.estimatedTime || (task.resources && task.resources.length > 0)) ? `
+                        <div class="task-meta">
+                          ${task.estimatedTime ? `<span class="task-time"><i class='fas fa-clock'></i> ${task.estimatedTime}</span>` : ''}
+                          ${task.resources && task.resources.length > 0 ? `<span class="task-resources">${task.resources.map(r => `<span class='task-resource'>${r}</span>`).join('')}</span>` : ''}
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          } else {
+            html += `<div class='msg-analysis-section'><em>No actionable tasks found.</em></div>`;
+          }
+          // Recommendations (optional)
+          if (analysis.recommendations && analysis.recommendations.length > 0) {
+            html += `
+              <div class="msg-analysis-section">
+                <div class="msg-analysis-header recs"><span class="icon">💡</span>Recommendations</div>
+                <div class="msg-analysis-recommendations">
+                  ${analysis.recommendations.slice(0, 3).map(rec => `<div class="msg-analysis-recommendation">${rec}</div>`).join('')}
+                  ${analysis.recommendations.length > 3 ? `<div class='msg-analysis-more'>...and ${analysis.recommendations.length-3} more</div>` : ''}
+                </div>
+              </div>
+            `;
+          }
+          html += `</div>`;
+          return html;
+        }
 
         chatForm.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -1342,18 +2028,18 @@
               }
               await new Promise(resolve => setTimeout(resolve, 800));
 
-              // Step 6: Generating LLM response
+            // Step 6: Generating LLM response
               updateProgress(6, 80, 'Generating response...');
-              if (mockTerminalContent) {
-                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
-              }
+            if (mockTerminalContent) {
+              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Generating LLM response...</span>\n`;
+            }
               await new Promise(resolve => setTimeout(resolve, 800));
               
-              // Step 7: Sending response to user
+            // Step 7: Sending response to user
               updateProgress(7, 90, 'Sending response...');
-              if (mockTerminalContent) {
-                mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Sending response to user...</span>\n`;
-              }
+            if (mockTerminalContent) {
+              mockTerminalContent.innerHTML += `<span class=\"prompt\">user@websearch:<span class=\"tilde\">~</span> <span class=\"dollar\">$</span></span> <span class=\"shell-cmd\">Sending response to user...</span>\n`;
+            }
               await new Promise(resolve => setTimeout(resolve, 800));
               
               // Final success status - only reach 100% once
@@ -1401,17 +2087,35 @@
               if (data.imageResults && data.imageResults.length > 0) {
                 await showGroupedImagesFullWidth(data.imageResults, customPanelTabContent, 2, 900);
               }
-              // 2. After grouped images, show tabs and default to Deep Answer
+              // 2. After grouped images, show tabs and default to Analysis if available, otherwise Deep Answer
               customPanelTabs.style.display = '';
-              renderDeepAnswerTab();
+              if (data.needsAnalysis && data.analysisResponse) {
+                tabAnalysis.classList.add('active');
+                tabDeepAnswer.classList.remove('active');
+                tabWebResults.classList.remove('active');
+                renderAnalysisTab();
+              } else {
+                tabDeepAnswer.classList.add('active');
+                tabAnalysis.classList.remove('active');
+                tabWebResults.classList.remove('active');
+                renderDeepAnswerTab();
+              }
               // Tab switching logic
+              tabAnalysis.onclick = function() {
+                tabAnalysis.classList.add('active');
+                tabDeepAnswer.classList.remove('active');
+                tabWebResults.classList.remove('active');
+                renderAnalysisTab();
+              };
               tabWebResults.onclick = function() {
                 tabWebResults.classList.add('active');
+                tabAnalysis.classList.remove('active');
                 tabDeepAnswer.classList.remove('active');
                 renderWebResultsTab();
               };
               tabDeepAnswer.onclick = function() {
                 tabDeepAnswer.classList.add('active');
+                tabAnalysis.classList.remove('active');
                 tabWebResults.classList.remove('active');
                 renderDeepAnswerTab();
               };
@@ -1442,6 +2146,7 @@
                 assistantMessage.className = "message assistant";
                 // Parse markdown and set innerHTML for better formatting
                 assistantMessage.innerHTML = parseMarkdown(data.llmResponse);
+                
                 assistantMessage.classList.add('typewriter-effect');
                 messagesContainer.appendChild(assistantMessage);
                 // Typewriter effect for assistant message
@@ -1647,12 +2352,126 @@
             tempDiv.childNodes.forEach(node => customPanelTabContent.appendChild(node));
           }
         }
+        // Helper to render analysis tab
+        function renderAnalysisTab() {
+          if (window.lastWebSearchData && window.lastWebSearchData.needsAnalysis && window.lastWebSearchData.analysisResponse) {
+            // Render structured analysis response
+            const analysis = window.lastWebSearchData.analysisResponse;
+            let html = '<div class="analysis-container">';
+            
+            // Summary section
+            if (analysis.summary) {
+              html += `
+                <div class="analysis-summary">
+                  <h3>📋 Analysis Summary</h3>
+                  <p>${analysis.summary}</p>
+                  ${analysis.keyPoints && analysis.keyPoints.length > 0 ? `
+                    <div class="key-points">
+                      <h4>🔑 Key Points</h4>
+                      <ul>
+                        ${analysis.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                      </ul>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }
+            
+            // Tasks section
+            if (analysis.tasks && analysis.tasks.length > 0) {
+              html += `
+                <div class="tasks-section">
+                  <h3>📝 Action Items</h3>
+                  ${analysis.tasks.map(task => `
+                    <div class="task-card">
+                      <div class="task-status ${task.status || 'pending'}"></div>
+                      <div class="task-header">
+                        <h4 class="task-title">${task.title}</h4>
+                        <span class="task-priority ${task.priority || 'medium'}">${task.priority || 'medium'}</span>
+                      </div>
+                      <p class="task-description">${task.description}</p>
+                      <div class="task-meta">
+                        ${task.estimatedTime ? `
+                          <div class="task-time">
+                            <i class="fas fa-clock"></i>
+                            <span>${task.estimatedTime}</span>
+                          </div>
+                        ` : ''}
+                        ${task.resources && task.resources.length > 0 ? `
+                          <div class="task-resources">
+                            ${task.resources.map(resource => `<span class="task-resource">${resource}</span>`).join('')}
+                          </div>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `;
+            }
+            
+            // Recommendations section
+            if (analysis.recommendations && analysis.recommendations.length > 0) {
+              html += `
+                <div class="recommendations-section">
+                  <h3>💡 Recommendations</h3>
+                  ${analysis.recommendations.map(rec => `
+                    <div class="recommendation-item">
+                      <p>${rec}</p>
+                    </div>
+                  `).join('')}
+                </div>
+              `;
+            }
+            
+            // Context section
+            if (analysis.context) {
+              html += `
+                <div class="context-section">
+                  <h3>🌍 Context & Background</h3>
+                  ${analysis.context.background ? `
+                    <div class="context-item">
+                      <h4>Background</h4>
+                      <p>${analysis.context.background}</p>
+                    </div>
+                  ` : ''}
+                  ${analysis.context.currentTrends ? `
+                    <div class="context-item">
+                      <h4>Current Trends</h4>
+                      <p>${analysis.context.currentTrends}</p>
+                    </div>
+                  ` : ''}
+                  ${analysis.context.challenges && analysis.context.challenges.length > 0 ? `
+                    <div class="context-item">
+                      <h4>Challenges</h4>
+                      <div class="context-challenges">
+                        <ul>
+                          ${analysis.context.challenges.map(challenge => `<li>${challenge}</li>`).join('')}
+                        </ul>
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }
+            
+            html += '</div>';
+            customPanelTabContent.innerHTML = html;
+          } else if (window.lastWebSearchData && window.lastWebSearchData.llmResponse) {
+            // Fallback to regular LLM response
+            customPanelTabContent.innerHTML = `<div style='color:#fff;text-align:left;padding:2rem 0 0 0;font-size:1.08rem;'>${parseMarkdown(window.lastWebSearchData.llmResponse)}</div>`;
+          } else if (window.lastWebSearchData && !window.lastWebSearchData.needsAnalysis) {
+            customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Deep analysis not needed for this query. The response is optimized for your specific question.</div>';
+          } else {
+            customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Analysis not available.</div>';
+          }
+        }
+
         // Helper to render deep answer tab
         function renderDeepAnswerTab() {
           if (window.lastWebSearchData && window.lastWebSearchData.llmResponse) {
             customPanelTabContent.innerHTML = `<div style='color:#fff;text-align:left;padding:2rem 0 0 0;font-size:1.08rem;'>${parseMarkdown(window.lastWebSearchData.llmResponse)}</div>`;
           } else {
-            customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Analyzed answer not available.</div>';
+            customPanelTabContent.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;font-size:1.2rem;">Deep answer not available.</div>';
           }
         }
         // Store last web search data for tab switching

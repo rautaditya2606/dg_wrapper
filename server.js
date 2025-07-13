@@ -420,6 +420,31 @@ Do not include any other text or explanation in your response.`
     return decision === 'search';
 }
 
+// Helper function to determine if query needs deep analysis
+async function shouldDoDeepAnalysis(query) {
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 50,
+    temperature: 0,
+    messages: [{
+      role: "user",
+      content: `Analyze this query: "${query}"
+
+Determine if this query would benefit from deep analysis with structured tasks, recommendations, and context. Consider these factors:
+- Complex problem-solving or planning queries
+- Queries requiring multiple steps or actions
+- Research or learning queries with practical applications
+- Queries about trends, comparisons, or strategic decisions
+- Queries that could benefit from actionable insights
+
+Reply with only one word - either "analyze" or "simple".
+Do not include any other text or explanation in your response.`
+    }]});
+
+    const decision = message.content[0].text.trim().toLowerCase();
+    return decision === 'analyze';
+}
+
 // New POST /analyze route
 app.post("/analyze", async (req, res) => {
   const query = req.body.query;
@@ -711,18 +736,105 @@ app.post("/test/search", async (req, res) => {
       processedWebResults = [];
     }
 
-    // Generate LLM response based on web search results
+    // Generate intelligent analysis response based on query type
     let llmResponse = null;
+    let analysisResponse = null;
+    let needsAnalysis = false;
+    
     if (processedWebResults.length > 0) {
       try {
+        // Let Claude decide if deep analysis is needed
+        try {
+          needsAnalysis = await shouldDoDeepAnalysis(validatedQuery);
+          logger.info({ query: validatedQuery, needsAnalysis }, 'Analysis decision made');
+        } catch (error) {
+          logger.error('Claude API call failed for analysis decision', error);
+          // If Claude fails, default to no analysis for safety
+          needsAnalysis = false;
+        }
+
         // Create context from web search results
         const contextPrompt = processedWebResults
           .slice(0, 5) // Use top 5 results
           .map(result => `Title: ${result.title}\nURL: ${result.href}\nSnippet: ${result.body}`)
           .join('\n\n');
 
-        // Generate LLM response using the context
-        const message = await anthropic.messages.create({
+        if (needsAnalysis) {
+          logger.info('Generating deep analysis for query:', validatedQuery);
+          // Generate deep analysis using structured prompt
+          const analysisPrompt = `Based on the following web search results, provide a comprehensive analysis for: "${validatedQuery}"
+
+Web Search Results:
+${contextPrompt}
+
+Please provide your response in the following JSON format:
+
+{
+  "summary": "A concise 2-3 sentence summary of the key findings",
+  "keyPoints": [
+    "Key point 1",
+    "Key point 2", 
+    "Key point 3"
+  ],
+  "tasks": [
+    {
+      "title": "Task Title",
+      "description": "Detailed description of what needs to be done",
+      "priority": "high|medium|low",
+      "estimatedTime": "time estimate",
+      "resources": ["resource1", "resource2"],
+      "status": "pending"
+    }
+  ],
+  "recommendations": [
+    "Specific recommendation 1",
+    "Specific recommendation 2"
+  ],
+  "context": {
+    "background": "Background information",
+    "currentTrends": "Current trends or developments",
+    "challenges": ["Challenge 1", "Challenge 2"]
+  }
+}
+
+Focus on providing actionable insights and practical tasks. Keep the summary concise and the key points clear.`;
+
+          const analysisMessage = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1500,
+            temperature: 0.7,
+            messages: [
+              {
+                role: "user",
+                content: analysisPrompt
+              }
+            ]
+          });
+
+          const analysisText = analysisMessage.content[0]?.text || "";
+          logger.info('Analysis response received, length:', analysisText.length);
+          
+          // Try to parse the JSON response
+          try {
+            const jsonMatch = analysisText.match(/```json\n([\s\S]*?)\n```/) || analysisText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const jsonContent = jsonMatch[1] || jsonMatch[0];
+              analysisResponse = JSON.parse(jsonContent.trim());
+              logger.info('Analysis JSON parsed successfully:', Object.keys(analysisResponse));
+            } else {
+              // Fallback to regular text response
+              logger.warn('No JSON found in analysis response, using as text');
+              llmResponse = analysisText;
+            }
+          } catch (parseError) {
+            // If JSON parsing fails, use as regular text
+            logger.error('Failed to parse analysis JSON:', parseError.message);
+            llmResponse = analysisText;
+          }
+        }
+
+        // Generate a regular LLM response for the chat panel
+        const regularMessage = await anthropic.messages.create({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1024,
           temperature: 0.7,
@@ -734,19 +846,29 @@ app.post("/test/search", async (req, res) => {
           ]
         });
 
-        llmResponse = message.content[0]?.text || "I found some information but couldn't generate a proper response.";
+        llmResponse = regularMessage.content[0]?.text || "I found some information but couldn't generate a proper response.";
       } catch (llmError) {
         logger.error('Error generating LLM response from web results:', llmError);
         llmResponse = `I found ${processedWebResults.length} web results for your query. You can view them in the panel on the right.`;
       }
     }
 
-    res.json({
+    const responseData = {
       webResults: processedWebResults,
       imageResults: processedImageResults,
       llmResponse: llmResponse,
+      analysisResponse: analysisResponse,
+      needsAnalysis: needsAnalysis,
       isConversational: false
+    };
+    
+    logger.info('Sending response to frontend:', {
+      needsAnalysis: responseData.needsAnalysis,
+      hasAnalysisResponse: !!responseData.analysisResponse,
+      analysisKeys: responseData.analysisResponse ? Object.keys(responseData.analysisResponse) : null
     });
+    
+    res.json(responseData);
   } catch (error) {
     logger.error('Error in /test/search:', error);
     res.status(500).json({ error: error.message, isConversational: false });
