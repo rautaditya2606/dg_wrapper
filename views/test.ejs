@@ -19,6 +19,8 @@
         --accent-dark: #1976d2;
         --message-user: #343435;
         --message-assistant: #2d2d2d;
+        --border-color: #444;
+        --accent-green: #4caf50;
       }
 
       /* Hide scrollbar for Webkit browsers (Chrome, Safari, etc.) */
@@ -1067,12 +1069,12 @@
         padding: 0.5rem 0;
       }
       .analysis-summary.compact {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
         color: white;
         padding: 0.75rem 1rem;
         border-radius: 10px;
         margin-bottom: 1rem;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.18);
+        /* box-shadow: 0 2px 8px rgba(102, 126, 234, 0.18); */
       }
       .analysis-summary.compact h3 {
         margin: 0 0 0.5rem 0;
@@ -1291,15 +1293,16 @@
         font-style: italic;
       }
 
+      /* --- Professional Analysis Card Palette for Custom Panel --- */
       .msg-analysis-modern.task-focused {
-        background: #22232a;
-        border: 1.5px solid #3a3b4d;
+        background: var(--surface-dark);
+        border: 1.5px solid var(--border-color);
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(30,32,60,0.10);
         margin: 1.2rem 0 0.5rem 0;
         padding: 0.7rem 1.1rem 0.7rem 1.1rem;
         font-size: 0.97rem;
-        color: #e0e0e0;
+        color: var(--text-light);
       }
       .msg-analysis-modern.task-focused .msg-analysis-header {
         font-weight: 700;
@@ -1308,11 +1311,14 @@
         align-items: center;
         margin-bottom: 0.3rem;
         padding-left: 0.5rem;
-        border-left: 4px solid #43e97b;
+        border-left: 4px solid var(--accent-blue);
         letter-spacing: 0.01em;
         gap: 0.4em;
+        background: none;
       }
-      .msg-analysis-modern.task-focused .msg-analysis-header.recs { border-left-color: #ffb347; }
+      .msg-analysis-modern.task-focused .msg-analysis-header.recs {
+        border-left-color: var(--accent-green);
+      }
       .msg-analysis-modern.task-focused .msg-analysis-header .icon {
         font-size: 1.08em;
         margin-right: 0.3em;
@@ -1320,7 +1326,7 @@
       }
       .msg-analysis-modern.task-focused .msg-analysis-summary {
         font-size: 0.97rem;
-        color: #e0e0e0;
+        color: var(--text-light);
         margin-bottom: 0.2rem;
       }
       .msg-analysis-modern.task-focused .msg-analysis-tasks {
@@ -1329,17 +1335,23 @@
         gap: 0.5rem;
       }
       .msg-analysis-modern.task-focused .msg-analysis-task {
-        background: #23243a;
+        background: var(--background-dark);
         border-radius: 7px;
         padding: 0.6rem 1rem 0.6rem 0.9rem;
-        border-left: 5px solid #43e97b;
+        border-left: 5px solid var(--accent-blue);
         margin-bottom: 0.1rem;
-        box-shadow: 0 1px 4px rgba(67,233,123,0.07);
+        box-shadow: 0 1px 4px rgba(30,32,60,0.07);
         margin-top: 0.1rem;
       }
-      .msg-analysis-modern.task-focused .msg-analysis-task.high { border-left-color: #ff6b6b; }
-      .msg-analysis-modern.task-focused .msg-analysis-task.medium { border-left-color: #feca57; }
-      .msg-analysis-modern.task-focused .msg-analysis-task.low { border-left-color: #48dbfb; }
+      .msg-analysis-modern.task-focused .msg-analysis-task.high {
+        border-left-color: #e57373;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-task.medium {
+        border-left-color: #ffd54f;
+      }
+      .msg-analysis-modern.task-focused .msg-analysis-task.low {
+        border-left-color: #64b5f6;
+      }
       .task-title-row {
         display: flex;
         align-items: center;
@@ -1348,7 +1360,7 @@
         gap: 0.5rem;
       }
       .task-title {
-        color: #fff;
+        color: var(--text-light);
         font-weight: 600;
         font-size: 0.98rem;
         flex: 1;
@@ -1361,27 +1373,27 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         white-space: nowrap;
-        background: #23242a;
-        border: 1.5px solid #444;
-        color: #fff;
+        background: var(--surface-dark);
+        border: 1.5px solid var(--border-color);
+        color: var(--text-dark);
       }
       .task-priority.high {
-        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-        color: white;
+        background: #e57373;
+        color: #fff;
         border: none;
       }
       .task-priority.medium {
-        background: linear-gradient(135deg, #feca57, #ff9ff3);
-        color: #2c3e50;
+        background: #ffd54f;
+        color: #333;
         border: none;
       }
       .task-priority.low {
-        background: linear-gradient(135deg, #48dbfb, #0abde3);
-        color: white;
+        background: #64b5f6;
+        color: #fff;
         border: none;
       }
       .task-desc {
-        color: #b0b0b0;
+        color: var(--text-dark);
         font-size: 0.95rem;
         margin-bottom: 0.1rem;
       }
@@ -1390,11 +1402,11 @@
         gap: 0.7rem;
         margin-top: 0.2rem;
         font-size: 0.92rem;
-        color: #aaa;
+        color: var(--text-dark);
         align-items: center;
       }
       .task-time i {
-        color: #43e97b;
+        color: var(--accent-green);
         margin-right: 0.2em;
       }
       .task-resources {
@@ -1402,12 +1414,12 @@
         gap: 0.3rem;
       }
       .task-resource {
-        background: rgba(67,233,123,0.13);
-        color: #43e97b;
+        background: rgba(33,150,243,0.13);
+        color: var(--accent-blue);
         padding: 0.13rem 0.6rem;
         border-radius: 12px;
         font-size: 0.85em;
-        border: 1px solid #43e97b33;
+        border: 1px solid #2196f344;
       }
       .msg-analysis-modern.task-focused .msg-analysis-recommendations {
         display: flex;
@@ -1416,15 +1428,15 @@
       }
       .msg-analysis-modern.task-focused .msg-analysis-recommendation {
         font-style: italic;
-        border-left: 4px solid #ffb347;
-        background: rgba(255,179,71,0.07);
-        color: #ffe6b3;
+        border-left: 4px solid var(--accent-green);
+        background: rgba(16,185,129,0.07);
+        color: var(--text-light);
         padding: 0.4rem 0.8rem;
         border-radius: 0 7px 7px 0;
         font-size: 0.95rem;
       }
       .msg-analysis-modern.task-focused .msg-analysis-more {
-        color: #aaa;
+        color: var(--text-dark);
         font-size: 0.85rem;
         margin: 0.2rem 0 0 0.5rem;
         font-style: italic;
