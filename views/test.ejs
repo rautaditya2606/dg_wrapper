@@ -128,21 +128,19 @@
 
       .custom-panel-toggle {
         display: none;
-        position: absolute;
-        right: 0;
-        top: 0;
-        transform: none;
+        position: fixed;
+        right: 24px;
+        top: 24px;
         width: 32px;
         height: 48px;
-        /* background: var(--surface-dark); */
         border-radius: 0 8px 8px 0;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-        z-index: 20;
-        transition: right 0.3s;
+        z-index: 1000;
+        transition: none;
       }
       body.show-panel-toggle .custom-panel-toggle {
         display: flex;
