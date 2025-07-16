@@ -523,12 +523,12 @@
       }
 
       .analysis-summary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: none;
         color: white;
         padding: 1.5rem;
         border-radius: 12px;
         margin-bottom: 1.5rem;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        box-shadow: none;
       }
 
       .analysis-summary h3 {
@@ -1042,7 +1042,7 @@
         bottom: 0;
         width: 0%;
         background: var(--accent-blue);
-        opacity: 0.18;
+        opacity: 0.35;
         z-index: 0;
         transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         border-radius: 4px;
@@ -1512,7 +1512,6 @@
 
           <div id="customPanelTabs" class="results-tabs" style="display:none;">
             <button id="tabAnalysis" class="tab active">Analysis</button>
-            <button id="tabDeepAnswer" class="tab">Deep Answer</button>
             <button id="tabWebResults" class="tab">Web Results</button>
           </div>
           <div id="customPanelTabContent">
@@ -1749,7 +1748,6 @@
         const chatPanelPlaceholder = document.getElementById("chatPanelPlaceholder");
         const customPanelTabs = document.getElementById("customPanelTabs");
         const tabAnalysis = document.getElementById("tabAnalysis");
-        const tabDeepAnswer = document.getElementById("tabDeepAnswer");
         const tabWebResults = document.getElementById("tabWebResults");
         const customPanelTabContent = document.getElementById("customPanelTabContent");
         
@@ -2094,7 +2092,7 @@
               // Hide tabs initially
               customPanelTabs.style.display = 'none';
               tabWebResults.classList.remove('active');
-              tabDeepAnswer.classList.add('active');
+              tabAnalysis.classList.add('active');
               // 1. Show grouped images first (if any)
               if (data.imageResults && data.imageResults.length > 0) {
                 await showGroupedImagesFullWidth(data.imageResults, customPanelTabContent, 2, 900);
@@ -2103,33 +2101,23 @@
               customPanelTabs.style.display = '';
               if (data.needsAnalysis && data.analysisResponse) {
                 tabAnalysis.classList.add('active');
-                tabDeepAnswer.classList.remove('active');
                 tabWebResults.classList.remove('active');
                 renderAnalysisTab();
               } else {
-                tabDeepAnswer.classList.add('active');
                 tabAnalysis.classList.remove('active');
-                tabWebResults.classList.remove('active');
-                renderDeepAnswerTab();
+                tabWebResults.classList.add('active');
+                renderWebResultsTab();
               }
               // Tab switching logic
               tabAnalysis.onclick = function() {
                 tabAnalysis.classList.add('active');
-                tabDeepAnswer.classList.remove('active');
                 tabWebResults.classList.remove('active');
                 renderAnalysisTab();
               };
               tabWebResults.onclick = function() {
                 tabWebResults.classList.add('active');
                 tabAnalysis.classList.remove('active');
-                tabDeepAnswer.classList.remove('active');
                 renderWebResultsTab();
-              };
-              tabDeepAnswer.onclick = function() {
-                tabDeepAnswer.classList.add('active');
-                tabAnalysis.classList.remove('active');
-                tabWebResults.classList.remove('active');
-                renderDeepAnswerTab();
               };
             } else {
               // For conversational queries, progress bar is already hidden, show simple message
@@ -2375,11 +2363,11 @@
             if (analysis.summary) {
               html += `
                 <div class="analysis-summary">
-                  <h3>📋 Analysis Summary</h3>
+                  <h3><i class="fa-solid fa-clipboard-list" style="margin-right:0.5em;"></i>Analysis Summary</h3>
                   <p>${analysis.summary}</p>
                   ${analysis.keyPoints && analysis.keyPoints.length > 0 ? `
                     <div class="key-points">
-                      <h4>🔑 Key Points</h4>
+                      <h4><i class="fa-solid fa-key" style="margin-right:0.4em;"></i>Key Points</h4>
                       <ul>
                         ${analysis.keyPoints.map(point => `<li>${point}</li>`).join('')}
                       </ul>
@@ -2393,7 +2381,7 @@
             if (analysis.tasks && analysis.tasks.length > 0) {
               html += `
                 <div class="tasks-section">
-                  <h3>📝 Action Items</h3>
+                  <h3><i class="fa-solid fa-list-check" style="margin-right:0.5em;"></i>Action Items</h3>
                   ${analysis.tasks.map(task => `
                     <div class="task-card">
                       <div class="task-status ${task.status || 'pending'}"></div>
@@ -2425,7 +2413,7 @@
             if (analysis.recommendations && analysis.recommendations.length > 0) {
               html += `
                 <div class="recommendations-section">
-                  <h3>💡 Recommendations</h3>
+                  <h3><i class="fa-solid fa-lightbulb" style="margin-right:0.5em;"></i>Recommendations</h3>
                   ${analysis.recommendations.map(rec => `
                     <div class="recommendation-item">
                       <p>${rec}</p>
@@ -2439,7 +2427,7 @@
             if (analysis.context) {
               html += `
                 <div class="context-section">
-                  <h3>🌍 Context & Background</h3>
+                  <h3><i class="fa-solid fa-globe" style="margin-right:0.5em;"></i>Context & Background</h3>
                   ${analysis.context.background ? `
                     <div class="context-item">
                       <h4>Background</h4>
