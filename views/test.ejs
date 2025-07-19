@@ -1028,10 +1028,12 @@
         font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
         margin-top: 4px;
         padding: 4px 8px;
-        background: rgba(255, 255, 255, 0.03);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
         border-radius: 4px;
-        border-left: 2px solid var(--accent-blue);
+        border-left: 3px solid;
+        border-image: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%) 1;
         overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       }
       .progress-status-fill {
         position: absolute;
@@ -1039,8 +1041,7 @@
         left: 0;
         bottom: 0;
         width: 0%;
-        background: var(--accent-blue);
-        opacity: 0.35;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.6) 0%, rgba(118, 75, 162, 0.6) 100%);
         z-index: 0;
         transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         border-radius: 4px;
@@ -1053,13 +1054,15 @@
       }
 
       .progress-status.success {
-        border-left-color: #4caf50;
+        border-image: linear-gradient(135deg, #4caf50 0%, #66bb6a 50%, #4caf50 100%) 1;
         color: #4caf50;
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(102, 187, 106, 0.08) 100%);
       }
 
       .progress-status.error {
-        border-left-color: #f44336;
+        border-image: linear-gradient(135deg, #f44336 0%, #ef5350 50%, #f44336 100%) 1;
         color: #f44336;
+        background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(239, 83, 80, 0.08) 100%);
       }
 
       /* Compact Analysis Card Styles for Message Assistant */

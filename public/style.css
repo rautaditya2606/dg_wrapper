@@ -1707,11 +1707,12 @@ body.search-active .initial-state {
   background: #18191c;
   border-radius: 10px 10px 0 0;
   padding: 1rem 1.5rem;
-  min-height: 70px;
+  height: 600px;
   font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
   color: #e5e5e5;
   font-size: 1rem;
   overflow-x: auto;
+  overflow-y: auto;
 }
 .mock-terminal-shell-content {
   white-space: pre-wrap;
