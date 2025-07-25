@@ -1707,7 +1707,7 @@ body.search-active .initial-state {
   background: #18191c;
   border-radius: 10px 10px 0 0;
   padding: 1rem 1.5rem;
-  height: 600px;
+  height: 700px;
   font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
   color: #e5e5e5;
   font-size: 1rem;
@@ -1743,4 +1743,96 @@ body.search-active .initial-state {
 .mock-terminal-checklist {
   color: #3dcc91;
   font-weight: 500;
+}
+
+.assistant-slide {
+  background: transparent;
+  color: inherit;
+  min-height: 120px;
+  font-size: 1.08rem;
+  padding: 1.5rem 2rem 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.7;
+  word-break: break-word;
+}
+.assistant-slide h1, .assistant-slide h2, .assistant-slide h3, .assistant-slide h4 {
+  color: var(--accent-blue);
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-weight: 700;
+}
+.assistant-slide h1 { font-size: 2rem; }
+.assistant-slide h2 { font-size: 1.5rem; }
+.assistant-slide h3 { font-size: 1.2rem; }
+.assistant-slide ul, .assistant-slide ol {
+  margin: 1em 0 1em 2em;
+  padding-left: 1.5em;
+}
+.assistant-slide li {
+  margin-bottom: 0.4em;
+}
+.assistant-slide pre, .assistant-slide code {
+  background: #23242a;
+  color: #e5e5e5;
+  border-radius: 6px;
+  padding: 0.3em 0.7em;
+  font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 1em;
+}
+.assistant-slide pre {
+  padding: 1em;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+.assistant-slide blockquote {
+  border-left: 4px solid var(--accent-blue);
+  background: #23242a;
+  color: #b0b0b0;
+  margin: 1em 0;
+  padding: 0.7em 1em;
+  border-radius: 6px;
+}
+.assistant-slide strong {
+  color: var(--accent-blue);
+}
+.assistant-slide em {
+  color: var(--accent-green);
+}
+.assistant-slide-progress {
+  margin-top: auto;
+  align-self: center;
+  color: #888;
+  font-size: 0.95rem;
+  opacity: 0.8;
+  padding-top: 1.2rem;
+}
+.assistant-slide-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.assistant-slide-nav button {
+  background: #3a3b3d;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.assistant-slide-nav button:disabled {
+  background: #23242a;
+  color: #888;
+  cursor: not-allowed;
+}
+.assistant-slide-nav button:not(:disabled):hover {
+  background: #2196f3;
+  color: #fff;
 }

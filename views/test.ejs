@@ -2145,14 +2145,67 @@
               if (data.llmResponse) {
                 const assistantMessage = document.createElement("div");
                 assistantMessage.className = "message assistant";
-                // Parse markdown and set innerHTML for better formatting
-                assistantMessage.innerHTML = parseMarkdown(data.llmResponse);
-                
-                assistantMessage.classList.add('typewriter-effect');
+
+                // Improved slide splitting logic
+                function splitSlidesByHeadingsOrParagraphs(text) {
+                  // Try to split by markdown headings
+                  const headingRegex = /(^|\n)(#+ .+?)(?=\n#|$)/gs;
+                  let matches = [...text.matchAll(headingRegex)];
+                  if (matches.length > 0) {
+                    // Each heading section is a slide
+                    return matches.map(m => m[2] + text.slice(m.index + m[2].length, (matches[matches.indexOf(m)+1]?.index) || undefined));
+                  } else {
+                    // Fallback: group every 5 paragraphs into a slide
+                    const paragraphs = text.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+                    const slides = [];
+                    for (let i = 0; i < paragraphs.length; i += 5) {
+                      slides.push(paragraphs.slice(i, i+5).join("\n\n"));
+                    }
+                    return slides;
+                  }
+                }
+
+                const slides = splitSlidesByHeadingsOrParagraphs(data.llmResponse)
+                  .map(p => parseMarkdown(p.trim()))
+                  .filter(Boolean);
+
+                let currentSlide = 0;
+
+                function renderSlide(idx) {
+                  assistantMessage.innerHTML = '';
+                  const slideDiv = document.createElement('div');
+                  slideDiv.className = 'assistant-slide';
+                  slideDiv.innerHTML = slides[idx];
+                  assistantMessage.appendChild(slideDiv);
+
+                  // Progress indicator
+                  if (slides.length > 1) {
+                    const progress = document.createElement('div');
+                    progress.className = 'assistant-slide-progress';
+                    progress.textContent = `Slide ${idx + 1} of ${slides.length}`;
+                    assistantMessage.appendChild(progress);
+                  }
+
+                  // Navigation
+                  if (slides.length > 1) {
+                    const nav = document.createElement('div');
+                    nav.className = 'assistant-slide-nav';
+                    const prevBtn = document.createElement('button');
+                    prevBtn.textContent = 'Previous';
+                    prevBtn.disabled = idx === 0;
+                    prevBtn.onclick = () => { currentSlide--; renderSlide(currentSlide); };
+                    const nextBtn = document.createElement('button');
+                    nextBtn.textContent = 'Next';
+                    nextBtn.disabled = idx === slides.length - 1;
+                    nextBtn.onclick = () => { currentSlide++; renderSlide(currentSlide); };
+                    nav.appendChild(prevBtn);
+                    nav.appendChild(nextBtn);
+                    assistantMessage.appendChild(nav);
+                  }
+                }
+
+                renderSlide(currentSlide);
                 messagesContainer.appendChild(assistantMessage);
-                // Typewriter effect for assistant message
-                console.log('Applying typewriter to new assistant message:', assistantMessage);
-                typewriterEffect(assistantMessage);
               } else if (data.webResults && data.webResults.length > 0) {
                 // Fallback: if no LLM response but we have web results
                 const assistantMessage = document.createElement("div");
