@@ -1,9 +1,7 @@
     // Import required dependencies
     import { config } from 'dotenv';
     import { ChatAnthropic } from '@langchain/anthropic';
-    import { SerpAPI } from 'langchain/tools';
-    import { BufferMemory } from 'langchain/memory';
-    import { AgentExecutor, initializeAgentExecutorWithOptions } from 'langchain/agents';
+    import { SerpAPI } from '@langchain/community/tools/serpapi';
     import { PromptTemplate } from '@langchain/core/prompts';
     import { RunnableSequence } from '@langchain/core/runnables';
     import { StringOutputParser } from '@langchain/core/output_parsers';
@@ -371,21 +369,30 @@
     });
 
     // Set up memory for conversation history
-    const memory = new BufferMemory({
-        returnMessages: true,
-        memoryKey: 'chat_history'
-    });
+    // const memory = new SimpleMemory(); // This line is removed as per the edit hint
 
     // Initialize tools with tracking
+    const tools = [];
+    
+    // Only add SerpAPI if API key is available
+    if (process.env.SERPAPI_API_KEY && process.env.SERPAPI_API_KEY.trim()) {
     const serpapi = new TrackedSerpAPI(process.env.SERPAPI_API_KEY);
+        tools.push(serpapi);
+    }
+    
     const wikipedia = new TrackedWikipedia();
+    tools.push(wikipedia);
+    
     const webPageTool = new WebPageTool();
+    tools.push(webPageTool);
+    
     const imageSearch = new TrackedImageSearch();
+    tools.push(imageSearch);
 
     // Create tools array with all capabilities
-    const tools = [serpapi, wikipedia, webPageTool, imageSearch];
+    // const tools = [serpapi, wikipedia, webPageTool, imageSearch]; // This line is removed as per the edit hint
 
-    // Create prompt template with memory and tools context
+    // Create prompt template with tools context
     const prompt = PromptTemplate.fromTemplate(`
     You are Claude 3, a helpful and intelligent AI assistant. The current date is ${getCurrentDate()}. You have access to the following tools:
     1. Web Search (for current information and news)
@@ -419,46 +426,16 @@
     2. Provide context about the images found
     3. Suggest alternative search terms if no images are found
 
-    Previous conversation:
-    {chat_history}
-
     User: {input}
     Assistant: Let me help you with that.
     `);
 
     // Create a chain that combines prompt, model, and output parsing
     const chain = RunnableSequence.from([
-        {
-            input: (input) => input.input,
-            chat_history: async () => {
-                const memoryResult = await memory.loadMemoryVariables({});
-                return memoryResult.chat_history || '';
-            }
-        },
         prompt,
         model,
         new StringOutputParser()
     ]);
-
-    // Initialize agent executor
-    let executor;
-
-    // Initialize the agent executor with tools
-    const initializeExecutor = async () => {
-        try {
-            executor = await initializeAgentExecutorWithOptions(tools, model, {
-                agentType: 'chat-conversational-react-description',
-                verbose: process.env.NODE_ENV === 'development',
-                memory,
-                maxIterations: 3,
-                returnIntermediateSteps: false
-            });
-            console.log('Chat executor initialized');
-        } catch (error) {
-            console.error('Failed to initialize executor:', error);
-            throw error;
-        }
-    };
 
     // Helper function to format AI responses
     export function formatAIResponse(response) {
@@ -613,10 +590,6 @@
             webActivityEmitter.on('activity', activityHandler);
             
             try {
-                if (!executor) {
-                    await initializeExecutor();
-                }
-
                 console.log('\n=== Processing Query ===');
                 console.log(`Query: ${input}`);
 
@@ -653,10 +626,10 @@
                     }
                 }
 
-                const agentResponse = await executor.invoke({ input });
+                const agentResponse = await chain.invoke({ input });
                 
                 // Format response for better readability
-                let response = agentResponse.output.trim();
+                let response = agentResponse.trim();
 
                 // Add line breaks between paragraphs if needed
                 response = response
@@ -666,10 +639,10 @@
                     .trim();
 
                 // Save the interaction to memory
-                await memory.saveContext(
-                    { input },
-                    { output: response }
-                );
+                // await memory.saveContext( // This line is removed as per the edit hint
+                //     { input },
+                //     { output: response }
+                // );
 
                 // Check if we have search results
                 const hasSearchResults = webActivities.some(
@@ -716,11 +689,6 @@
             }
         });
     }
-
-    // Initialize the executor when the module is imported
-    initializeExecutor().catch(error => {
-        console.error('Failed to initialize executor:', error);
-    });
 
     // Example usage:
     // const response = await chat("What's the latest news about AI?");

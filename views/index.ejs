@@ -125,6 +125,19 @@
                                 <% } %>
                             </div>
 
+                            <!-- Download Slides Button - Only show when there are both analysis and web results -->
+                            <% if(result && result.analysis && ((result.searchResults && result.searchResults.length > 0) || (result.images && result.images.length > 0))) { %>
+                                <div class="download-section">
+                                    <button id="downloadSlidesBtn" class="download-slides-btn">
+                                        <i class="fas fa-download"></i>
+                                        Download Slides
+                                    </button>
+                                    <div class="download-info">
+                                        <small>Creates beautiful slides with analysis, web results, and images</small>
+                                    </div>
+                                </div>
+                            <% } %>
+
                             <script>
                                 document.addEventListener('DOMContentLoaded', () => {
                                     const nodes = document.querySelectorAll('.node');
@@ -405,6 +418,94 @@
                 terminal.appendChild(line);
                 terminal.scrollTop = terminal.scrollHeight;
             }
+
+            // Download Slides functionality
+            document.addEventListener('DOMContentLoaded', function() {
+                const downloadBtn = document.getElementById('downloadSlidesBtn');
+                if (downloadBtn) {
+                    downloadBtn.addEventListener('click', async function() {
+                        // Add loading state
+                        this.classList.add('loading');
+                        this.innerHTML = '<i class="fas fa-spinner"></i> Generating Slides...';
+                        
+                        try {
+                            // Get data from the page elements
+                            const query = '<%= query %>';
+                            const analysis = {
+                                summary: document.querySelector('#summary-node .node-content p')?.textContent || '',
+                                keyPoints: Array.from(document.querySelectorAll('#keypoints-node .node-list li')).map(li => li.textContent),
+                                analysis: {
+                                    contentQuality: document.querySelector('#analysis-node .node-content p:nth-child(1)')?.textContent.replace('Content Quality:', '').trim() || '',
+                                    credibility: document.querySelector('#analysis-node .node-content p:nth-child(2)')?.textContent.replace('Source Credibility:', '').trim() || '',
+                                    relevance: document.querySelector('#analysis-node .node-content p:nth-child(3)')?.textContent.replace('Relevance:', '').trim() || '',
+                                    insights: document.querySelector('#analysis-node .node-content p:nth-child(4)')?.textContent.replace('Key Insights:', '').trim() || ''
+                                }
+                            };
+
+                            // Get search results
+                            const searchResults = Array.from(document.querySelectorAll('.search-result.card')).map(card => ({
+                                title: card.querySelector('.result-title a')?.textContent || '',
+                                snippet: card.querySelector('.result-snippet')?.textContent || '',
+                                link: card.querySelector('.result-title a')?.href || '',
+                                displayed_link: card.querySelector('.result-url')?.textContent || ''
+                            }));
+
+                            // Get images
+                            const images = Array.from(document.querySelectorAll('.image-result-item')).map(item => ({
+                                title: item.querySelector('.image-title')?.textContent || '',
+                                thumbnail: item.querySelector('img')?.src || '',
+                                link: item.querySelector('.image-link')?.href || ''
+                            }));
+
+                            const slideData = {
+                                query: query,
+                                analysis: analysis,
+                                searchResults: searchResults,
+                                images: images,
+                                timestamp: new Date().toISOString()
+                            };
+
+                            // Send request to generate slides
+                            const response = await fetch('/download-slides', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(slideData)
+                            });
+
+                            if (response.ok) {
+                                // Create download link
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `slides_${query.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                                
+                                // Show success message
+                                this.innerHTML = '<i class="fas fa-check"></i> Slides Downloaded!';
+                                setTimeout(() => {
+                                    this.innerHTML = '<i class="fas fa-download"></i> Download Slides';
+                                    this.classList.remove('loading');
+                                }, 2000);
+                            } else {
+                                throw new Error('Failed to generate slides');
+                            }
+                        } catch (error) {
+                            console.error('Error downloading slides:', error);
+                            this.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Download Failed';
+                            setTimeout(() => {
+                                this.innerHTML = '<i class="fas fa-download"></i> Download Slides';
+                                this.classList.remove('loading');
+                            }, 2000);
+                        }
+                    });
+                }
+            });
         </script>
     </div>
 

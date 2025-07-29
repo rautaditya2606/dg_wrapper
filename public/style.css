@@ -1443,6 +1443,7 @@ body.search-active .initial-state {
     align-items: flex-start;
     gap: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
 }
 
 .search-result.card:hover {
@@ -1833,6 +1834,149 @@ body.search-active .initial-state {
   cursor: not-allowed;
 }
 .assistant-slide-nav button:not(:disabled):hover {
-  background: #2196f3;
-  color: #fff;
+    background-color: var(--accent-blue);
+    transform: translateY(-1px);
+}
+
+/* Download button in assistant slide nav */
+.assistant-slide-nav .download-slides-btn {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.assistant-slide-nav .download-slides-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.assistant-slide-nav .download-slides-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+}
+
+.assistant-slide-nav .download-slides-btn:hover::before {
+    left: 100%;
+}
+
+.assistant-slide-nav .download-slides-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.assistant-slide-nav .download-slides-btn i {
+    font-size: 1rem;
+}
+
+.assistant-slide-nav .download-slides-btn.loading {
+    background: linear-gradient(135deg, #a0a0a0 0%, #2d2d2d 100%);
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.assistant-slide-nav .download-slides-btn.loading i {
+    animation: spin 1s linear infinite;
+}
+
+/* Download Slides Button Styles */
+.download-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--surface-dark) 0%, var(--background-dark) 100%);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.download-slides-btn {
+    background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-dark) 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.download-slides-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.download-slides-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+}
+
+.download-slides-btn:hover::before {
+    left: 100%;
+}
+
+.download-slides-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(33, 150, 243, 0.3);
+}
+
+.download-slides-btn i {
+    font-size: 1.1rem;
+}
+
+.download-info {
+    margin-top: 0.75rem;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.download-info small {
+    opacity: 0.8;
+}
+
+/* Loading state for download button */
+.download-slides-btn.loading {
+    background: linear-gradient(135deg, var(--text-dark) 0%, var(--surface-dark) 100%);
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.download-slides-btn.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }

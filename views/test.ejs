@@ -1443,6 +1443,68 @@
         font-style: italic;
       }
 
+      /* Download Slides Button Styles for Test Page */
+      .download-slides-btn {
+        background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .download-slides-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+      }
+
+      .download-slides-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+      }
+
+      .download-slides-btn:hover::before {
+        left: 100%;
+      }
+
+      .download-slides-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(33, 150, 243, 0.3);
+      }
+
+      .download-slides-btn i {
+        font-size: 1.1rem;
+      }
+
+      .download-slides-btn.loading {
+        background: linear-gradient(135deg, #a0a0a0 0%, #2d2d2d 100%);
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .download-slides-btn.loading i {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
     </style>
   </head>
   <body>
@@ -1911,6 +1973,9 @@
             return;
           }
 
+          // Store the query for download button access
+          window.lastQuery = query;
+
           // Show "Searching on web..." in web panel for all queries
           webResults.innerHTML = `
             <div class="panel-header">
@@ -2198,8 +2263,157 @@
                     nextBtn.textContent = 'Next';
                     nextBtn.disabled = idx === slides.length - 1;
                     nextBtn.onclick = () => { currentSlide++; renderSlide(currentSlide); };
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                    downloadBtn.className = 'download-slides-btn';
+                    downloadBtn.onclick = async () => {
+                      // Add loading state
+                      downloadBtn.classList.add('loading');
+                      downloadBtn.innerHTML = '<i class="fas fa-spinner"></i> Generating...';
+                      
+                      try {
+                        // Prepare the data to send
+                        const slideData = {
+                          query: window.lastQuery || 'Search Results',
+                          analysis: {
+                            summary: data.llmResponse || 'Analysis based on web search results',
+                            keyPoints: data.analysisResponse?.keyPoints || [],
+                            analysis: {
+                              contentQuality: 'Based on web search results',
+                              credibility: 'Multiple sources analyzed',
+                              relevance: 'Directly related to query',
+                              insights: 'Comprehensive analysis provided'
+                            }
+                          },
+                          searchResults: (data.webResults || []).map(result => ({
+                            title: result.title,
+                            snippet: result.body || result.snippet,
+                            link: result.href || result.link,
+                            displayed_link: result.href || result.link
+                          })),
+                          images: data.imageResults || [],
+                          timestamp: new Date().toISOString()
+                        };
+
+                        // Send request to generate slides
+                        const response = await fetch('/download-slides', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify(slideData)
+                        });
+
+                        if (response.ok) {
+                          // Create download link
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `slides_${(window.lastQuery || 'search').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                          
+                          // Show success message
+                          downloadBtn.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+                          setTimeout(() => {
+                            downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                            downloadBtn.classList.remove('loading');
+                          }, 2000);
+                        } else {
+                          throw new Error('Failed to generate slides');
+                        }
+                      } catch (error) {
+                        console.error('Error downloading slides:', error);
+                        downloadBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                        setTimeout(() => {
+                          downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                          downloadBtn.classList.remove('loading');
+                        }, 2000);
+                      }
+                    };
                     nav.appendChild(prevBtn);
                     nav.appendChild(nextBtn);
+                    nav.appendChild(downloadBtn);
+                    assistantMessage.appendChild(nav);
+                  } else {
+                    // Even if there's only one slide, show download button
+                    const nav = document.createElement('div');
+                    nav.className = 'assistant-slide-nav';
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                    downloadBtn.className = 'download-slides-btn';
+                    downloadBtn.onclick = async () => {
+                      // Add loading state
+                      downloadBtn.classList.add('loading');
+                      downloadBtn.innerHTML = '<i class="fas fa-spinner"></i> Generating...';
+                      
+                      try {
+                        // Prepare the data to send
+                        const slideData = {
+                          query: window.lastQuery || 'Search Results',
+                          analysis: {
+                            summary: data.llmResponse || 'Analysis based on web search results',
+                            keyPoints: data.analysisResponse?.keyPoints || [],
+                            analysis: {
+                              contentQuality: 'Based on web search results',
+                              credibility: 'Multiple sources analyzed',
+                              relevance: 'Directly related to query',
+                              insights: 'Comprehensive analysis provided'
+                            }
+                          },
+                          searchResults: (data.webResults || []).map(result => ({
+                            title: result.title,
+                            snippet: result.body || result.snippet,
+                            link: result.href || result.link,
+                            displayed_link: result.href || result.link
+                          })),
+                          images: data.imageResults || [],
+                          timestamp: new Date().toISOString()
+                        };
+
+                        // Send request to generate slides
+                        const response = await fetch('/download-slides', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify(slideData)
+                        });
+
+                        if (response.ok) {
+                          // Create download link
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `slides_${(window.lastQuery || 'search').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                          
+                          // Show success message
+                          downloadBtn.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+                          setTimeout(() => {
+                            downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                            downloadBtn.classList.remove('loading');
+                          }, 2000);
+                        } else {
+                          throw new Error('Failed to generate slides');
+                        }
+                      } catch (error) {
+                        console.error('Error downloading slides:', error);
+                        downloadBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                        setTimeout(() => {
+                          downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                          downloadBtn.classList.remove('loading');
+                        }, 2000);
+                      }
+                    };
+                    nav.appendChild(downloadBtn);
                     assistantMessage.appendChild(nav);
                   }
                 }
@@ -2344,6 +2558,13 @@
                   ${imageHtml}
                 ${resultContent}
               `;
+              
+              // Make the entire card clickable
+              resultDiv.addEventListener('click', function(e) {
+                // Don't trigger if clicking on a link (to avoid double navigation)
+                if (e.target.tagName === 'A') return;
+                window.open(result.href, '_blank');
+              });
 
               resultsList.appendChild(resultDiv);
             });
@@ -2542,6 +2763,153 @@
             } catch (e) {}
           }
           return resp;
+        };
+
+        // Download Slides functionality for test page
+        function addDownloadButtonToMessage(messageElement, query, data) {
+          // Only add download button if there are both analysis and web results
+          if (data && ((data.webResults && data.webResults.length > 0) || (data.imageResults && data.imageResults.length > 0))) {
+            const downloadSection = document.createElement('div');
+            downloadSection.className = 'download-section';
+            downloadSection.style.cssText = `
+              margin-top: 1.5rem;
+              padding: 1.5rem;
+              background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+              border-radius: 12px;
+              border: 1px solid #444;
+              text-align: center;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            `;
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.id = 'downloadSlidesBtn';
+            downloadBtn.className = 'download-slides-btn';
+            downloadBtn.style.cssText = `
+              background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+              color: white;
+              border: none;
+              padding: 1rem 2rem;
+              border-radius: 8px;
+              font-size: 1rem;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              display: inline-flex;
+              align-items: center;
+              gap: 0.5rem;
+              box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+              position: relative;
+              overflow: hidden;
+            `;
+            downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download Slides';
+            
+            const downloadInfo = document.createElement('div');
+            downloadInfo.className = 'download-info';
+            downloadInfo.style.cssText = `
+              margin-top: 0.75rem;
+              color: #a0a0a0;
+              font-size: 0.875rem;
+              line-height: 1.4;
+            `;
+            downloadInfo.innerHTML = '<small>Creates beautiful slides with analysis, web results, and images</small>';
+            
+            downloadSection.appendChild(downloadBtn);
+            downloadSection.appendChild(downloadInfo);
+            messageElement.appendChild(downloadSection);
+            
+            // Add click handler
+            downloadBtn.addEventListener('click', async function() {
+              // Add loading state
+              this.classList.add('loading');
+              this.innerHTML = '<i class="fas fa-spinner"></i> Generating Slides...';
+              
+              try {
+                // Prepare the data to send
+                const slideData = {
+                  query: query,
+                  analysis: {
+                    summary: data.llmResponse || 'Analysis based on web search results',
+                    keyPoints: data.analysisResponse?.keyPoints || [],
+                    analysis: {
+                      contentQuality: 'Based on web search results',
+                      credibility: 'Multiple sources analyzed',
+                      relevance: 'Directly related to query',
+                      insights: 'Comprehensive analysis provided'
+                    }
+                  },
+                  searchResults: (data.webResults || []).map(result => ({
+                    title: result.title,
+                    snippet: result.body || result.snippet,
+                    link: result.href || result.link,
+                    displayed_link: result.href || result.link
+                  })),
+                  images: data.imageResults || [],
+                  timestamp: new Date().toISOString()
+                };
+
+                // Send request to generate slides
+                const response = await fetch('/download-slides', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(slideData)
+                });
+
+                if (response.ok) {
+                  // Create download link
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `slides_${query.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                  
+                  // Show success message
+                  this.innerHTML = '<i class="fas fa-check"></i> Slides Downloaded!';
+                  setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-download"></i> Download Slides';
+                    this.classList.remove('loading');
+                  }, 2000);
+                } else {
+                  throw new Error('Failed to generate slides');
+                }
+              } catch (error) {
+                console.error('Error downloading slides:', error);
+                this.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Download Failed';
+                setTimeout(() => {
+                  this.innerHTML = '<i class="fas fa-download"></i> Download Slides';
+                  this.classList.remove('loading');
+                }, 2000);
+              }
+            });
+          }
+        }
+
+        // Modify the assistant message creation to include download button
+        const originalCreateElement = document.createElement;
+        document.createElement = function(tagName) {
+          const element = originalCreateElement.call(this, tagName);
+          if (tagName === 'div' && element.className === 'message assistant') {
+            // This is an assistant message, we'll add download button after content is set
+            const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+            Object.defineProperty(element, 'innerHTML', {
+              set: function(value) {
+                originalInnerHTML.set.call(this, value);
+                // Add download button after content is set
+                if (window.lastWebSearchData && window.lastQuery) {
+                  setTimeout(() => {
+                    addDownloadButtonToMessage(this, window.lastQuery, window.lastWebSearchData);
+                  }, 100);
+                }
+              },
+              get: originalInnerHTML.get
+            });
+          }
+          return element;
         };
       });
     </script>
