@@ -1025,6 +1025,812 @@ async function callClaude(query, contextPrompt) {
   return message.content;
 }
 
+// Download slides endpoint
+app.post("/download-slides", async (req, res) => {
+  try {
+    const { query, llmResponse, analysisResponse, webResults, imageResults, timestamp } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
+    // Generate HTML slides
+    const htmlContent = generateSlidesHtml(query, llmResponse, analysisResponse, webResults, imageResults, timestamp);
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename="${query.replace(/[^a-zA-Z0-9]/g, '_')}_slides.html"`);
+    
+    res.send(htmlContent);
+  } catch (error) {
+    logger.error('Error generating slides:', error);
+    res.status(500).json({ error: 'Failed to generate slides' });
+  }
+});
+
+// Format LLM response for template
+function formatLLMResponseForTemplate(response) {
+  if (!response) return '<p>No general analysis available.</p>';
+  
+  let formatted = response
+    // Handle escaped characters
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, '\\')
+    
+    // Convert markdown-style headers to HTML
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    
+    // Convert bold text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    
+    // Convert italic text
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    
+    // Convert code blocks
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    
+    // Convert blockquotes
+    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+    
+    // Convert lists
+    .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
+    .replace(/^- (.*$)/gim, '<li>$1</li>')
+    .replace(/^\* (.*$)/gim, '<li>$1</li>')
+    
+    // Convert line breaks to paragraphs
+    .split('\n\n')
+    .map(paragraph => {
+      paragraph = paragraph.trim();
+      if (!paragraph) return '';
+      
+      // If it's already an HTML tag, don't wrap it
+      if (paragraph.startsWith('<')) {
+        return paragraph;
+      }
+      
+      // If it contains list items, wrap in ul/ol
+      if (paragraph.includes('<li>')) {
+        // Check if it's numbered list
+        const isNumbered = /\d+\./.test(paragraph);
+        const listType = isNumbered ? 'ol' : 'ul';
+        return `<${listType}>${paragraph}</${listType}>`;
+      }
+      
+      // Otherwise wrap in paragraph
+      return `<p>${paragraph}</p>`;
+    })
+    .join('');
+  
+  return formatted;
+}
+
+// Format LLM response for better presentation
+function formatLLMResponse(response) {
+  if (!response) return '<p>No response available.</p>';
+  
+  let formatted = response
+    // Handle escaped characters
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, '\\')
+    
+    // Convert markdown-style headers to HTML
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    
+    // Convert bold text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    
+    // Convert italic text
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    
+    // Convert code blocks
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    
+    // Convert blockquotes
+    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+    
+    // Convert lists
+    .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
+    .replace(/^- (.*$)/gim, '<li>$1</li>')
+    .replace(/^\* (.*$)/gim, '<li>$1</li>')
+    
+    // Convert line breaks to paragraphs
+    .split('\n\n')
+    .map(paragraph => {
+      paragraph = paragraph.trim();
+      if (!paragraph) return '';
+      
+      // If it's already an HTML tag, don't wrap it
+      if (paragraph.startsWith('<')) {
+        return paragraph;
+      }
+      
+      // If it contains list items, wrap in ul/ol
+      if (paragraph.includes('<li>')) {
+        // Check if it's numbered list
+        const isNumbered = /\d+\./.test(paragraph);
+        const listType = isNumbered ? 'ol' : 'ul';
+        return `<${listType}>${paragraph}</${listType}>`;
+      }
+      
+      // Otherwise wrap in paragraph
+      return `<p>${paragraph}</p>`;
+    })
+    .join('');
+  
+  return formatted;
+}
+
+// Generate formatted LLM response HTML
+function generateFormattedLLMResponse(llmResponse) {
+  if (!llmResponse) return '<p>No general analysis available.</p>';
+  
+  let formatted = llmResponse
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, '\\')
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    .replace(/```([\\s\\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+    .replace(/^\\d+\\. (.*$)/gim, '<li>$1</li>')
+    .replace(/^- (.*$)/gim, '<li>$1</li>')
+    .replace(/^\\* (.*$)/gim, '<li>$1</li>')
+    .split('\\n\\n')
+    .map(p => p.trim())
+    .filter(p => p)
+    .map(p => p.startsWith('<') ? p : `<p>${p}</p>`)
+    .join('');
+  
+  return formatted;
+}
+
+// Generate HTML slides function
+function generateSlidesHtml(query, llmResponse, analysisResponse, webResults, imageResults, timestamp) {
+  const date = new Date(timestamp);
+  const formattedDate = date.toLocaleDateString();
+  const formattedTime = date.toLocaleTimeString();
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${query} - Analysis Slides</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .slide-content {
+            max-width: 1200px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .slide-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .slide-subtitle {
+            font-size: 1.5rem;
+            color: #7f8c8d;
+            margin-bottom: 3rem;
+        }
+        
+        .slide-text {
+            font-size: 1.2rem;
+            color: #34495e;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: left;
+            line-height: 1.8;
+        }
+        
+        .slide-text p {
+            margin-bottom: 1.5rem;
+            text-align: justify;
+        }
+        
+        .slide-text h1, .slide-text h2, .slide-text h3 {
+            color: #2c3e50;
+            margin: 2rem 0 1rem 0;
+            font-weight: 600;
+        }
+        
+        .slide-text h1 {
+            font-size: 1.8rem;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        
+        .slide-text h2 {
+            font-size: 1.5rem;
+            color: #2980b9;
+        }
+        
+        .slide-text h3 {
+            font-size: 1.3rem;
+            color: #34495e;
+        }
+        
+        .slide-text ul, .slide-text ol {
+            margin: 1rem 0 1.5rem 2rem;
+            padding-left: 1rem;
+        }
+        
+        .slide-text li {
+            margin-bottom: 0.8rem;
+            line-height: 1.6;
+        }
+        
+        .slide-text blockquote {
+            border-left: 4px solid #3498db;
+            background: #ecf0f1;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            font-style: italic;
+        }
+        
+        .slide-text strong {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        .slide-text em {
+            color: #27ae60;
+            font-style: italic;
+        }
+        
+        .slide-text code {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .slide-text pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid #34495e;
+        }
+        
+        .slide-text pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        
+        .slide-text h1, .slide-text h2, .slide-text h3 {
+            color: #2c3e50;
+            margin: 1rem 0 0.5rem 0;
+        }
+        
+        .slide-text ul, .slide-text ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+        
+        .slide-text li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .slide-text pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        .slide-text code {
+            background: #34495e;
+            color: #ecf0f1;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .slide-text blockquote {
+            border-left: 4px solid #3498db;
+            background: #ecf0f1;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+        }
+        
+        .slide-text strong {
+            color: #e74c3c;
+        }
+        
+        .slide-text em {
+            color: #27ae60;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e1e8ed;
+        }
+        
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .card p {
+            color: #34495e;
+            margin-bottom: 1rem;
+        }
+        
+        .key-points {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .key-point {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .key-point h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .web-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .web-result {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e1e8ed;
+            transition: transform 0.3s ease;
+        }
+        
+        .web-result:hover {
+            transform: translateY(-5px);
+        }
+        
+        .web-result h4 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .web-result p {
+            color: #7f8c8d;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .web-result a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+        
+        .web-result a:hover {
+            text-decoration: underline;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .image-item {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .image-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .image-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px 8px 0 0;
+            background: #f8f9fa;
+            transition: opacity 0.3s ease;
+        }
+        
+        .image-item img[src=""], .image-item img:not([src]) {
+            display: none;
+        }
+        
+        .image-info {
+            padding: 1rem;
+        }
+        
+        .image-info h4 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .image-info a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+        
+        .image-info a:hover {
+            text-decoration: underline;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 1000;
+        }
+        
+        .nav-btn {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-btn:hover {
+            background: #34495e;
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(44, 62, 80, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .slide {
+            display: none;
+        }
+        
+        .slide.active {
+            display: flex;
+        }
+        
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+            }
+            
+            .slide-title {
+                font-size: 2rem;
+            }
+            
+            .slide-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .slide-text {
+                font-size: 1rem;
+            }
+            
+            .key-points {
+                grid-template-columns: 1fr;
+            }
+            
+            .web-results {
+                grid-template-columns: 1fr;
+            }
+            
+            .image-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-counter">
+        <span id="current-slide">1</span> / <span id="total-slides">5</span>
+    </div>
+    
+    <!-- Slide 1: Query -->
+    <div class="slide active" id="slide-1">
+        <div class="slide-content">
+            <h1 class="slide-title">Query</h1>
+            <div class="card">
+                <h3>Your Question</h3>
+                <p style="font-size: 1.5rem; color: #2c3e50; margin: 2rem 0;">"${query}"</p>
+                <p style="color: #7f8c8d; font-size: 0.9rem;">Generated on ${formattedDate} at ${formattedTime}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 2: General LLM Response -->
+    <div class="slide" id="slide-2">
+        <div class="slide-content">
+            <h1 class="slide-title">General Analysis</h1>
+            <div class="slide-text">
+                ${generateFormattedLLMResponse(llmResponse)}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 3: Deep Analysis -->
+    <div class="slide" id="slide-3">
+        <div class="slide-content">
+            <h1 class="slide-title">Deep Analysis</h1>
+            ${analysisResponse ? `
+                <div class="card">
+                    ${analysisResponse.summary ? `
+                        <h3>Summary</h3>
+                        <p>${analysisResponse.summary}</p>
+                    ` : ''}
+                    
+                    ${analysisResponse.keyPoints && analysisResponse.keyPoints.length > 0 ? `
+                        <h3>Key Points</h3>
+                        <div class="key-points">
+                            ${analysisResponse.keyPoints.map(point => `
+                                <div class="key-point">
+                                    <h4>${point}</h4>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    ${analysisResponse.tasks && analysisResponse.tasks.length > 0 ? `
+                        <h3>Action Items</h3>
+                        ${analysisResponse.tasks.map(task => `
+                            <div class="card">
+                                <h4>${task.title || 'Task'}</h4>
+                                <p><strong>Description:</strong> ${task.description || 'No description'}</p>
+                                ${task.priority ? `<p><strong>Priority:</strong> ${task.priority}</p>` : ''}
+                                ${task.estimatedTime ? `<p><strong>Estimated Time:</strong> ${task.estimatedTime}</p>` : ''}
+                                ${task.resources && task.resources.length > 0 ? `
+                                    <p><strong>Resources:</strong> ${task.resources.join(', ')}</p>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    ` : ''}
+                    
+                    ${analysisResponse.recommendations && analysisResponse.recommendations.length > 0 ? `
+                        <h3>Recommendations</h3>
+                        ${analysisResponse.recommendations.map(rec => `
+                            <div class="card">
+                                <p>${rec}</p>
+                            </div>
+                        `).join('')}
+                    ` : ''}
+                    
+                    ${analysisResponse.context ? `
+                        <h3>Context & Background</h3>
+                        ${analysisResponse.context.background ? `
+                            <div class="card">
+                                <h4>Background</h4>
+                                <p>${analysisResponse.context.background}</p>
+                            </div>
+                        ` : ''}
+                        ${analysisResponse.context.currentTrends ? `
+                            <div class="card">
+                                <h4>Current Trends</h4>
+                                <p>${analysisResponse.context.currentTrends}</p>
+                            </div>
+                        ` : ''}
+                        ${analysisResponse.context.challenges && analysisResponse.context.challenges.length > 0 ? `
+                            <div class="card">
+                                <h4>Challenges</h4>
+                                <ul>
+                                    ${analysisResponse.context.challenges.map(challenge => `<li>${challenge}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    ` : ''}
+                </div>
+            ` : '<div class="card"><p>No deep analysis available.</p></div>'}
+        </div>
+    </div>
+    
+    <!-- Slide 4: Web Results -->
+    <div class="slide" id="slide-4">
+        <div class="slide-content">
+            <h1 class="slide-title">Web Search Results</h1>
+            ${webResults && webResults.length > 0 ? `
+                <div class="web-results">
+                    ${webResults.slice(0, 6).map(result => `
+                        <div class="web-result">
+                            <h4>${result.title || 'No title'}</h4>
+                            <p>${result.body || result.snippet || 'No description'}</p>
+                            <a href="${result.href || result.link || '#'}" target="_blank" onclick="openResult('${result.href || result.link || '#'}')">
+                                ${result.href || result.link || 'View source'}
+                            </a>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '<div class="card"><p>No web search results available.</p></div>'}
+        </div>
+    </div>
+    
+    <!-- Slide 5: Image Results -->
+    <div class="slide" id="slide-5">
+        <div class="slide-content">
+            <h1 class="slide-title">Image Results</h1>
+            ${imageResults && imageResults.length > 0 ? `
+                <div class="image-grid">
+                    ${imageResults.slice(0, 8).map(image => {
+                        // Handle different image data structures
+                        const imageUrl = image.src || image.url || image.link || image.image || image.original || '';
+                        const imageTitle = image.title || image.alt || 'Image';
+                        const sourceUrl = image.href || image.source || image.url || image.link || '';
+                        
+                        return `
+                            <div class="image-item">
+                                <img src="${imageUrl}" alt="${imageTitle}" onerror="this.style.display='none'; this.nextElementSibling.innerHTML='<p style=\\"color: #999; text-align: center; padding: 2rem;\\">Image not available</p>';" onload="this.style.opacity='1'" style="opacity: 0; transition: opacity 0.3s ease;">
+                                <div class="image-info">
+                                    <h4>${imageTitle}</h4>
+                                    ${sourceUrl ? `<a href="${sourceUrl}" target="_blank" onclick="openResult('${sourceUrl}')">View source</a>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            ` : '<div class="card"><p>No image results available.</p></div>'}
+        </div>
+    </div>
+    
+    <div class="navigation">
+        <button class="nav-btn" id="prev-btn" onclick="previousSlide()">Previous</button>
+        <button class="nav-btn" id="next-btn" onclick="nextSlide()">Next</button>
+    </div>
+    
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 5;
+        
+        function showSlide(slideNumber) {
+            // Hide all slides
+            for (let i = 1; i <= totalSlides; i++) {
+                document.getElementById('slide-' + i).classList.remove('active');
+            }
+            
+            // Show current slide
+            document.getElementById('slide-' + slideNumber).classList.add('active');
+            
+            // Update counter
+            document.getElementById('current-slide').textContent = slideNumber;
+            document.getElementById('total-slides').textContent = totalSlides;
+            
+            // Update navigation buttons
+            document.getElementById('prev-btn').disabled = slideNumber === 1;
+            document.getElementById('next-btn').disabled = slideNumber === totalSlides;
+        }
+        
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        }
+        
+        function previousSlide() {
+            if (currentSlide > 1) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        }
+        
+        function openResult(url) {
+            if (url && url !== '#') {
+                window.open(url, '_blank');
+            }
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                previousSlide();
+            }
+        });
+        
+        // Initialize
+        showSlide(1);
+    </script>
+</body>
+</html>`;
+}
+
 // Create HTTP server
 const server = http.createServer(app);
 

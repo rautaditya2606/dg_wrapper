@@ -1836,3 +1836,20 @@ body.search-active .initial-state {
   background: #2196f3;
   color: #fff;
 }
+
+.download-slides-btn {
+  background: #10b981 !important;
+  color: white !important;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: 0.5rem;
+}
+
+.download-slides-btn:hover {
+  background: #059669 !important;
+  color: white !important;
+}

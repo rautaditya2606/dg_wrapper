@@ -2198,8 +2198,23 @@
                     nextBtn.textContent = 'Next';
                     nextBtn.disabled = idx === slides.length - 1;
                     nextBtn.onclick = () => { currentSlide++; renderSlide(currentSlide); };
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download Slides';
+                    downloadBtn.className = 'download-slides-btn';
+                    downloadBtn.onclick = () => downloadSlides(query, data);
                     nav.appendChild(prevBtn);
                     nav.appendChild(nextBtn);
+                    nav.appendChild(downloadBtn);
+                    assistantMessage.appendChild(nav);
+                  } else {
+                    // Show download button even for single slide
+                    const nav = document.createElement('div');
+                    nav.className = 'assistant-slide-nav';
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download Slides';
+                    downloadBtn.className = 'download-slides-btn';
+                    downloadBtn.onclick = () => downloadSlides(query, data);
+                    nav.appendChild(downloadBtn);
                     assistantMessage.appendChild(nav);
                   }
                 }
@@ -2543,6 +2558,44 @@
           }
           return resp;
         };
+
+        // Download slides function
+        async function downloadSlides(query, data) {
+          try {
+            const response = await fetch('/download-slides', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query: query,
+                llmResponse: data.llmResponse,
+                analysisResponse: data.analysisResponse,
+                webResults: data.webResults,
+                imageResults: data.imageResults,
+                timestamp: new Date().toISOString()
+              })
+            });
+
+            if (response.ok) {
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${query.replace(/[^a-zA-Z0-9]/g, '_')}_slides.html`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            } else {
+              console.error('Download failed:', response.statusText);
+              alert('Download failed. Please try again.');
+            }
+          } catch (error) {
+            console.error('Download error:', error);
+            alert('Download failed. Please try again.');
+          }
+        }
       });
     </script>
   </body>
