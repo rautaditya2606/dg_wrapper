@@ -1,7 +1,8 @@
     // Import required dependencies
-    import { config } from 'dotenv';
+    import dotenv from 'dotenv';
+    dotenv.config();
     import { ChatAnthropic } from '@langchain/anthropic';
-    import { SerpAPI } from 'langchain/tools';
+    // Removed: import { SerpAPI } from '@langchain/community/tools/serpapi';
     import { BufferMemory } from 'langchain/memory';
     import { AgentExecutor, initializeAgentExecutorWithOptions } from 'langchain/agents';
     import { PromptTemplate } from '@langchain/core/prompts';
@@ -133,24 +134,15 @@
         }
     }
 
-    // Wrap SerpAPI to track web activity and include thumbnails
-    class TrackedSerpAPI extends SerpAPI {
+    // TrackedWebSearch tool using SearchClient (Serper)
+    class TrackedWebSearch {
+        name = 'web_search';
+        description = 'Search the web for current information and news using Serper.';
+        constructor(searchClient) {
+            this.searchClient = searchClient;
+        }
         async _call(input) {
             try {
-                // Extract year from query
-                const yearMatch = input.match(/\b(20\d{2})\b/);
-                const currentYear = new Date().getFullYear();
-                
-                // Validate year
-                let year = null;
-                if (yearMatch) {
-                    const parsedYear = parseInt(yearMatch[1], 10);
-                    if (parsedYear <= currentYear) {
-                        year = parsedYear;
-                    }
-                }
-                
-                // Emit initial search activity
                 const searchActivity = {
                     type: 'Web Search',
                     content: `Searching for: ${input}`,
@@ -161,78 +153,41 @@
                 };
                 webActivityEmitter.emit('activity', searchActivity);
                 sendToTerminal(searchActivity);
-                
-                // Add date filter if valid year found
-                let params = input;
-                if (year) {
-                    params = {
-                        q: input,
-                        tbs: `cdr:1,cd_min:1/1/${year},cd_max:12/31/${year}`
-                    };
-                }
-                
-                const result = await super._call(params);
-                const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
-                
-                if (parsedResult.organic_results?.length > 0) {
-                    // Format results with year context
-                    const formattedResults = parsedResult.organic_results
-                        .slice(0, 5)
-                        .map(item => {
-                            // Extract date from snippet or title if possible
-                            const dateMatch = (item.snippet || item.title).match(/\b(20\d{2})\b/);
-                            const itemYear = dateMatch ? parseInt(dateMatch[1], 10) : null;
-                            
-                            // Add visual indicator for result age
-                            let ageIndicator = '';
-                            if (itemYear) {
-                                if (itemYear === currentYear) ageIndicator = '🆕 ';
-                                else if (itemYear === currentYear - 1) ageIndicator = '📅 ';
+                const params = { q: input };
+                const result = await this.searchClient.searchLocal(params);
+                if (result.organic && result.organic.length > 0) {
+                    const formattedResults = result.organic.slice(0, 5).map(item => {
+                        const resultActivity = {
+                            type: 'Search Result',
+                            content: `${item.title}\n${item.snippet || ''}`,
+                            metadata: {
+                                url: item.link,
+                                thumbnail: item.favicon,
                             }
-                            
-                            const resultActivity = {
-                                type: 'Search Result',
-                                content: `${ageIndicator}${item.title}\n${item.snippet || ''}`,
-                                metadata: {
-                                    url: item.link,
-                                    thumbnail: item.thumbnail,
-                                    year: itemYear
-                                }
-                            };
-                            webActivityEmitter.emit('activity', resultActivity);
-                            sendToTerminal(resultActivity);
-                            
-                            return `${ageIndicator}${item.title}\n${item.link}\n${item.snippet || ''}\n`;
-                        })
-                        .join('\n');
-                    
+                        };
+                        webActivityEmitter.emit('activity', resultActivity);
+                        sendToTerminal(resultActivity);
+                        return `${item.title}\n${item.link}\n${item.snippet || ''}\n`;
+                    }).join('\n');
                     return formattedResults;
                 }
-                
                 const noResultsActivity = {
                     type: 'Web Search',
-                    content: 'No results found for this query. Try rephrasing your search terms.',
-                    metadata: {
-                        query: input,
-                        timestamp: new Date().toISOString(),
-                        status: 'no-results'
-                    }
+                    content: 'No results found.',
+                    metadata: { query: input }
                 };
                 webActivityEmitter.emit('activity', noResultsActivity);
                 sendToTerminal(noResultsActivity);
-                
-                return "No relevant search results found for your query. Try adjusting your search terms or time period.";
+                return 'No results found.';
             } catch (error) {
-                console.error(`SerpAPI search failed: ${error.message}`);
                 const errorActivity = {
-                    type: 'search',
-                    status: 'error',
-                    query: input,
-                    error: error.message
+                    type: 'Web Search',
+                    content: `Web search error: ${error.message}`,
+                    metadata: { query: input }
                 };
                 webActivityEmitter.emit('activity', errorActivity);
                 sendToTerminal(errorActivity);
-                return `I encountered an error while searching: ${error.message}. Please try rephrasing your query.`;
+                return `Web search error: ${error.message}`;
             }
         }
     }
@@ -360,12 +315,10 @@
         }
     }
 
-    config();
-
     // Initialize model with Claude 3 Sonnet
     const model = new ChatAnthropic({
         apiKey: process.env.ANTHROPIC_API_KEY,
-        modelName: 'claude-sonnet-4-20250514',
+        modelName: 'claude-opus-4-20250514',
         maxTokens: 2048,
         temperature: 0.7
     });
@@ -376,14 +329,21 @@
         memoryKey: 'chat_history'
     });
 
+    // Initialize SearchClient for Serper and RapidAPI
+    const searchClient = new SearchClient(
+        process.env.SERPER_API_KEY,
+        process.env.RAPIDAPI_KEY,
+        process.env.PEXELS_API_KEY
+    );
+
     // Initialize tools with tracking
-    const serpapi = new TrackedSerpAPI(process.env.SERPAPI_API_KEY);
+    const webSearch = new TrackedWebSearch(searchClient);
     const wikipedia = new TrackedWikipedia();
     const webPageTool = new WebPageTool();
     const imageSearch = new TrackedImageSearch();
 
     // Create tools array with all capabilities
-    const tools = [serpapi, wikipedia, webPageTool, imageSearch];
+    const tools = [webSearch, wikipedia, webPageTool, imageSearch];
 
     // Create prompt template with memory and tools context
     const prompt = PromptTemplate.fromTemplate(`
@@ -519,85 +479,65 @@
         try {
             const classificationPrompt = `Analyze this query: "${query}"
 
-    Determine if this query requires a web search based on these criteria:
+Determine if this query requires a web search based on these criteria:
 
-    1. Information Type:
-    - Static/General Knowledge: Basic concepts, definitions, established facts, general principles
-    - Dynamic/Current Information: News, recent developments, real-time data, current statistics
-    - Visual Content: Images, photos, pictures, visual representations
+1. Information Type:
+- Static/General Knowledge: Basic concepts, definitions, established facts, general principles
+- Dynamic/Current Information: News, recent developments, real-time data, current statistics
+- Visual Content: Images, photos, pictures, visual representations
 
-    2. Information Freshness:
-    - Timeless: Information that doesn't change significantly over time
-    - Time-Sensitive: Information that needs to be current or recent
+2. Information Freshness:
+- Timeless: Information that doesn't change significantly over time
+- Time-Sensitive: Information that needs to be current or recent
 
-    3. Information Scope:
-    - Universal: Information that is generally accepted and consistent across sources
-    - Specific: Information that might vary by source, location, or context
+3. Information Scope:
+- Universal: Information that is generally accepted and consistent across sources
+- Specific: Information that might vary by source, location, or context
 
-    4. Information Verification:
-    - Self-contained: Can be answered with general knowledge
-    - External Reference: Requires looking up specific facts, sources, or current data
+4. Information Verification:
+- Self-contained: Can be answered with general knowledge
+- External Reference: Requires looking up specific facts, sources, or current data
 
-    5. Visual Content:
-    - Text-only: Can be answered with text
-    - Visual: Requires images, photos, or visual content
+5. Visual Content:
+- Text-only: Can be answered with text
+- Visual: Requires images, photos, or visual content
 
-    Examples:
-    - "What is machine learning?" -> static (basic concept, timeless knowledge)
-    - "What are the latest developments in machine learning?" -> search (current information needed)
-    - "How does a neural network work?" -> static (established technical concept)
-    - "What are the current applications of neural networks?" -> search (current usage examples needed)
-    - "Show me images of cats" -> search (visual content needed)
-    - "Find photos of Paris" -> search (visual content needed)
+Examples:
+- "What is machine learning?" -> static (basic concept, timeless knowledge)
+- "What are the latest developments in machine learning?" -> search (current information needed)
+- "How does a neural network work?" -> static (established technical concept)
+- "What are the current applications of neural networks?" -> search (current usage examples needed)
+- "Show me images of cats" -> search (visual content needed)
+- "Find photos of Paris" -> search (visual content needed)
 
-    Based on the above analysis, determine if this query requires a web search.
-    Reply with only one word - either "search" or "static".
-    Do not include any other text or explanation in your response.`;
-
+Based on the above analysis, determine if this query requires a web search.
+Reply with only one word - either "search" or "static".
+Do not include any other text or explanation in your response.`;
             const response = await model.invoke(classificationPrompt);
             const decision = response.trim().toLowerCase();
             return decision === 'search';
         } catch (error) {
-            console.error('Query classification error:', error);
-            // Fallback to pattern matching if LLM classification fails
-            return needsWebSearch(query);
+            console.error('Query classification error (Claude LLM):', error && error.response ? error.response.data : error);
+            // If classification fails, DO NOT web search, just answer as chatbot
+            return false;
         }
     }
 
     // Helper function to determine if web search is needed (fallback)
     function needsWebSearch(query) {
-        const informationPatterns = [
-            /how\s+to/i,
-            /what\s+is/i,
-            /when\s+was/i,
-            /where\s+is/i,
-            /who\s+is/i,
-            /why\s+does/i,
+        // Only trigger for queries with clear current/today/latest/news keywords
+        const webSearchPatterns = [
             /latest/i,
             /news/i,
+            /current/i,
+            /today/i,
+            /breaking/i,
+            /trending/i,
+            /recent/i,
             /update/i,
-            /example/i,
-            /guide/i,
-            /tutorial/i,
-            /search/i,
-            /find/i,
-            /restaurant/i,
-            /food/i,
-            /place/i
+            /live/i
         ];
-
-        const imagePatterns = [
-            /image/i,
-            /photo/i,
-            /picture/i,
-            /show\s+me/i,
-            /visual/i,
-            /look\s+like/i,
-            /appearance/i
-        ];
-
-        return informationPatterns.some(pattern => pattern.test(query)) || 
-               imagePatterns.some(pattern => pattern.test(query));
+        return webSearchPatterns.some(pattern => pattern.test(query));
     }
 
     // Main chat function that processes user input
@@ -704,12 +644,11 @@
 
             } catch (error) {
                 console.error('Chat Error:', error);
-                
                 // Remove listener
                 webActivityEmitter.off('activity', activityHandler);
-                
+                // Always provide a fallback LLM response
                 resolve({
-                    response: `I apologize, but I encountered an error while processing your request: ${error.message}`,
+                    response: `I'm sorry, I couldn't generate a response due to a technical issue. Please try again or rephrase your question.`,
                     webActivity: webActivities,
                     error: true
                 });

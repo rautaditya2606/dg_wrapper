@@ -17,6 +17,15 @@ import { SearchClient } from './src/search.js';
 // Initialize dotenv
 dotenv.config();
 
+// Add global error handlers to catch any unhandled errors
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ UNHANDLED REJECTION:', reason);
+  console.error('Promise:', promise);
+});
+process.on('uncaughtException', (err) => {
+  console.error('❌ UNCAUGHT EXCEPTION:', err);
+});
+
 // Configure DNS and threadpool
 dns.setDefaultResultOrder('ipv4first');  // Prioritize IPv4
 process.env.UV_THREADPOOL_SIZE = 16;  // Increase thread pool for better network handling
@@ -333,7 +342,7 @@ app.post("/search", async (req, res) => {
     
     // Get Anthropic analysis with dynamic prompt
     const anthropicResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-3-opus-20240229",
       max_tokens: complexity.level === 'deep' ? 1500 : complexity.level === 'medium' ? 1000 : 600,
       temperature: 0.7,
       messages: [{
@@ -403,7 +412,7 @@ Ensure the response is valid JSON that exactly matches the specified structure.`
 // Helper function to check if query needs web search using Claude
 async function shouldDoWebSearch(query) {
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-3-opus-20240229",
     max_tokens: 50,
     temperature: 0,
     messages: [{
@@ -423,7 +432,7 @@ Do not include any other text or explanation in your response.`
 // Helper function to determine if query needs deep analysis
 async function shouldDoDeepAnalysis(query) {
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-3-opus-20240229",
     max_tokens: 50,
     temperature: 0,
     messages: [{
@@ -458,10 +467,8 @@ app.post("/analyze", async (req, res) => {
     try {
       doWebSearch = await shouldDoWebSearch(query);
     } catch (error) {
-      logger.error('Claude API call failed for web search decision', {
-        error: error.message,
-        stack: error.stack
-      });
+      logger.error({ error: error.message, stack: error.stack, anthropicData: error.response?.data, query }, 'Claude API call failed for web search decision');
+      console.error('FULL CLAUDE ERROR:', error, error?.response?.data);
       // If Claude fails, default to web search for safety
       doWebSearch = true;
     }
@@ -469,7 +476,7 @@ app.post("/analyze", async (req, res) => {
     if (!doWebSearch) {
       try {
         const message = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-3-opus-20240229",
           max_tokens: 1024,
           temperature: 0.7,
           messages: [
@@ -560,7 +567,7 @@ Keep each section concise and practical. Focus on providing value without repeat
 
     try {
       const message = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-3-opus-20240229",
         max_tokens: 1024,
         temperature: 0.7,
         messages: [{ role: "user", content: prompt }]
@@ -669,7 +676,7 @@ app.post("/test/search", async (req, res) => {
       // This is a conversational query - let Claude answer from its training data
       try {
         const message = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-3-opus-20240229",
           max_tokens: 1024,
           temperature: 0.7,
           messages: [
@@ -800,7 +807,7 @@ Please provide your response in the following JSON format:
 Focus on providing actionable insights and practical tasks. Keep the summary concise and the key points clear.`;
 
           const analysisMessage = await anthropic.messages.create({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-3-opus-20240229",
             max_tokens: 1500,
             temperature: 0.7,
             messages: [
@@ -835,7 +842,7 @@ Focus on providing actionable insights and practical tasks. Keep the summary con
 
         // Generate a regular LLM response for the chat panel
         const regularMessage = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-3-opus-20240229",
           max_tokens: 1024,
           temperature: 0.7,
           messages: [
